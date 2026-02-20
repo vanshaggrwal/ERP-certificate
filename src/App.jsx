@@ -10,10 +10,9 @@ import {
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
 import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
 
-<<<<<<< HEAD
+
 import StudentDetails from "./pages/college-admin/StudentDetails";
-=======
->>>>>>> f4585e410b357c46b194c58385c3cee7736fb475
+
 import AdminDashboard from "./pages/college-admin/Dashboard";
 import Students from "./pages/college-admin/Students";
 import ProjectStudents from "./pages/college-admin/ProjectStudents";
