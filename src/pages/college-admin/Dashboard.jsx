@@ -1,4 +1,4 @@
-import { projects } from "../data/projects";
+import { projects } from "../../data/projects";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
