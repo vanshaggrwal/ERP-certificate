@@ -24,7 +24,7 @@ export default function Login() {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
 
       const uid = userCredential.user.uid;
@@ -41,7 +41,6 @@ export default function Login() {
       // 🚀 Redirect based on role
       const redirectPath = getDashboardByRole(role);
       navigate(redirectPath);
-
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -63,9 +62,7 @@ export default function Login() {
           <h2 className="text-2xl font-semibold text-center text-gray-800">
             Welcome Back
           </h2>
-          <p className="text-center text-gray-500 mt-1 mb-8">
-            Sign in to access your ICEM dashboard
-          </p>
+          <p className="text-center text-gray-500 mt-1 mb-8"></p>
 
           {/* Form */}
           <form
@@ -115,9 +112,6 @@ export default function Login() {
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
-
-           
-             
           </form>
         </div>
       </div>
