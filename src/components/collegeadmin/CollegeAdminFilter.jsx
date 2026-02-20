@@ -1,4 +1,4 @@
-export default function Filters() {
+export default function CollegeAdminFilters() {
   return (
     <div className="bg-white rounded-xl shadow p-6">
       <h2 className="font-semibold mb-4">Academic Structure Filters</h2>
