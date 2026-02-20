@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
 import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
 
-
+import StudentDetails from "./pages/college-admin/StudentDetails";
 import AdminDashboard from "./pages/college-admin/Dashboard";
 import Students from "./pages/college-admin/Students";
 import ProjectStudents from "./pages/college-admin/ProjectStudents";
@@ -56,6 +56,8 @@ export default function App() {
           <Route path="" element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="projects/:projectId" element={<ProjectStudents />} />
+         
+<Route path="students/:studentId" element={<StudentDetails />} />
           <Route path="certificates" element={<Certificates />} />
           <Route path="exams" element={<Exams />} />
           <Route path="help" element={<Help />} />

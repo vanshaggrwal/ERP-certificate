@@ -1,51 +1,89 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { students } from "../../data/students";
-import ProgressBar from "../../components/collegeadmin/CollegeAdminProgressBar";
 
 export default function StudentDetails() {
-  const { id } = useParams();
-  const student = students.find(s => s.id === id);
+  const { studentId } = useParams();
+  const navigate = useNavigate();
+
+  const student = students.find((s) => s.id === studentId);
+
+  if (!student) {
+    return <p className="text-gray-500">Student not found.</p>;
+  }
 
   return (
-    <div className="p-8">
-      <h2 className="text-3xl font-bold mb-6">{student.name}</h2>
+    <div className="max-w-5xl">
+      {/* BACK */}
+      <button
+        onClick={() => navigate(-1)}
+        className="text-blue-600 text-sm mb-4"
+      >
+        ← Back
+      </button>
 
-      <div className="overflow-x-auto bg-white rounded-xl shadow">
-        <table className="w-full">
-          <thead className="bg-gray-100 text-gray-600">
-            <tr>
-              <th className="p-4 text-left">Certificate</th>
-              <th className="p-4">Progress</th>
-              <th className="p-4">Exams</th>
-              <th className="p-4">Status</th>
-            </tr>
-          </thead>
+      {/* TITLE */}
+      <h1 className="text-2xl font-semibold mb-6">
+        Student Details
+      </h1>
 
-          <tbody>
-            {student.certificates.map((c, i) => (
-              <tr key={i} className="border-t hover:bg-gray-50">
-                <td className="p-4 font-medium">{c.title}</td>
-                <td className="p-4"><ProgressBar value={c.progress} /></td>
-                <td className="p-4 text-center">
-                  {c.examsGiven}/{c.totalExams}
-                </td>
-                <td className="p-4 text-center">
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-semibold
-                      ${
-                        c.status === "Completed"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                  >
-                    {c.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* CARD */}
+      <div className="bg-white rounded-xl shadow p-8">
+        {/* BASIC INFO */}
+        <Section title="Basic Information">
+          <Detail label="Roll No" value={student.id} />
+          <Detail label="Name" value={student.name} />
+          <Detail label="Gender" value={student.gender} />
+          <Detail label="Date of Birth" value={student.dob} />
+        </Section>
+
+        {/* ACADEMIC INFO */}
+        <Section title="Academic Information">
+          <Detail label="College / Course / Year" value={student.projectId} />
+          <Detail label="Admission Year" value={student.admissionYear} />
+          <Detail label="Current Semester" value={student.currentSemester} />
+          <Detail label="10th Percentage" value={`${student.tenthPercentage}%`} />
+          <Detail label="12th Percentage" value={`${student.twelfthPercentage}%`} />
+        </Section>
+
+        {/* CERTIFICATION INFO */}
+        <Section title="Certification Progress">
+          <Detail label="Certificate" value={student.certificate} />
+          <Detail label="Progress" value={student.progress} />
+          <Detail label="Exams Attempted" value={student.exams} />
+        </Section>
+
+        {/* CONTACT INFO */}
+        <Section title="Contact Information">
+          <Detail label="Email" value={student.email} />
+          <Detail label="Phone" value={student.phone} />
+        </Section>
       </div>
+    </div>
+  );
+}
+
+/* ---------- REUSABLE COMPONENTS ---------- */
+
+function Section({ title, children }) {
+  return (
+    <div className="mb-8">
+      <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+        {title}
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, value }) {
+  return (
+    <div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="mt-1 font-medium text-gray-900">
+        {value}
+      </p>
     </div>
   );
 }
