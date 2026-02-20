@@ -1,10 +1,19 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
 
 /* ================= ADMIN (COLLEGE ADMIN UI) ================= */
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
 import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
 
+<<<<<<< HEAD
 import StudentDetails from "./pages/college-admin/StudentDetails";
+=======
+>>>>>>> f4585e410b357c46b194c58385c3cee7736fb475
 import AdminDashboard from "./pages/college-admin/Dashboard";
 import Students from "./pages/college-admin/Students";
 import ProjectStudents from "./pages/college-admin/ProjectStudents";
@@ -14,6 +23,7 @@ import Help from "./pages/college-admin/Help";
 
 /* ================= PUBLIC ================= */
 import Landing from "./pages/Landing";
+import Login from "./pages/Login";
 
 /* ================= STUDENT ================= */
 import StudentLayout from "./components/layout/StudentLayout";
@@ -42,18 +52,25 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ================= PUBLIC ================= */}
-        <Route path="/" element={<Landing />} />
+        {/* DEFAULT → LOGIN */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* LOGIN */}
+        <Route path="/login" element={<Login />} />
+
+        {/* OPTIONAL LANDING */}
+        <Route path="/home" element={<Landing />} />
 
         {/* ================= STUDENT ================= */}
         <Route path="/student" element={<StudentLayout />}>
+          <Route index element={<StudentDashboard />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="profile" element={<StudentProfile />} />
         </Route>
 
         {/* ================= COLLEGE ADMIN ================= */}
         <Route path="/college-admin" element={<CollegeAdminLayout />}>
-          <Route path="" element={<AdminDashboard />} />
+          <Route index element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="projects/:projectId" element={<ProjectStudents />} />
          
@@ -63,8 +80,8 @@ export default function App() {
           <Route path="help" element={<Help />} />
         </Route>
 
-        {/* ================= FALLBACK ================= */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* FALLBACK */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
