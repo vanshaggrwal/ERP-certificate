@@ -4,13 +4,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCkrt2tXNhgwRw6tAWmSaPkZXGxRkB6eII",
-  authDomain: "erp-certification.firebaseapp.com",
-  projectId: "erp-certification",
-  storageBucket: "erp-certification.firebasestorage.app",
-  messagingSenderId: "676723204618",
-  appId: "1:676723204618:web:cdff0f301564ded948f5f3",
-  measurementId: "G-XFCFF52LHZ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: "G-XFCFF52LHZ",
 };
 
 const app = initializeApp(firebaseConfig);
