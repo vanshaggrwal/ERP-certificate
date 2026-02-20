@@ -12,7 +12,7 @@ export default function Dashboard() {
         {projects.map((p) => (
           <div
             key={p.id}
-            onClick={() => navigate(`/projects/${p.id}`)}
+            onClick={() => navigate(`/college-admin/projects/${p.id}`)}
             className="bg-white rounded-xl shadow p-6 cursor-pointer hover:shadow-lg transition"
           >
             <p className="text-sm text-gray-500">Project Code</p>

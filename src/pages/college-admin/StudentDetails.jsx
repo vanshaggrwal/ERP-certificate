@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { students } from "../../data/students";
-import ProgressBar from "../../components/ProgressBar";
+import ProgressBar from "../../components/collegeadmin/CollegeAdminProgressBar";
 
 export default function StudentDetails() {
   const { id } = useParams();
