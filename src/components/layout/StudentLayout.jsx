@@ -1,14 +1,25 @@
+import { useState } from "react";
+import StudentSidebar from "../layout/StudentSidebar";
+import StudentNavbar from "../layout/StudentNavbar";
 import { Outlet } from "react-router-dom";
-import StudentSidebar from "./StudentSidebar";
 
 export default function StudentLayout() {
-  return (
-    <div className="flex h-screen bg-gray-100">
-      <StudentSidebar />
+  const [collapsed, setCollapsed] = useState(false);
 
-      <main className="flex-1 p-6 overflow-y-auto">
-        <Outlet />
-      </main>
+  return (
+    <div className="flex min-h-screen">
+      <StudentSidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
+
+      <div className="flex-1 bg-gray-100">
+        <StudentNavbar />
+
+        <main className="p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -9,18 +9,14 @@ const dummyCourses = [
 
 export default function StudentDashboard() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {dummyCourses.map((course) => (
-          <CourseCard
-            key={course.id}
-            title={course.title}
-            status={course.status}
-          />
-        ))}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {dummyCourses.map((course) => (
+        <CourseCard
+          key={course.id}
+          title={course.title}
+          status={course.status}
+        />
+      ))}
     </div>
   );
 }
