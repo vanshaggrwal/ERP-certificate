@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 
 /* ================= ADMIN (COLLEGE ADMIN UI) ================= */
-import CollegeAdminSidebar from "./components/college-admin/CollegeAdminSidebar";
-import CollegeAdminNavbar from "./components/college-admin/CollegeAdminNavbar";
+import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
+import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
+
 
 import AdminDashboard from "./pages/college-admin/Dashboard";
 import Students from "./pages/college-admin/Students";
@@ -52,7 +53,7 @@ export default function App() {
 
         {/* ================= COLLEGE ADMIN ================= */}
         <Route path="/college-admin" element={<CollegeAdminLayout />}>
-          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="" element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="projects/:projectId" element={<ProjectStudents />} />
           <Route path="certificates" element={<Certificates />} />

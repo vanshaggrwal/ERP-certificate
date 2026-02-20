@@ -2,6 +2,7 @@ import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import ERPFeatures from "../components/ERPFeatures";
 import Footer from "../components/Footer";
+import ERPCTA from "../components/ERPCTA";
 
 export default function Landing() {
   return (
@@ -9,6 +10,7 @@ export default function Landing() {
       <Navbar />
       <Hero />
       <ERPFeatures/>
+      <ERPCTA />
       <Footer/>
     </>
   );
