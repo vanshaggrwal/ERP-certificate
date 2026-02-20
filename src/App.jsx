@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
-import ProjectStudents from "./pages/ProjectStudents";
+import Sidebar from "./components/CollegeAdminSidebar";
+import Navbar from "./components/";
+import ProjectStudents from "./pages/college admin/ProjectStudents";
 import Dashboard from "./pages/Dashboard";
-import Students from "./pages/Students";
-import Certificates from "./pages/Certificates";
-import Exams from "./pages/Exams";
-import Help from "./pages/Help";
+import Students from "./pages/college admin/Students";
+import Certificates from "./pages/college admin/Certificates";
+import Exams from "./pages/college admin/Exams";
+import Help from "./pages/college admin/Help";
 
 export default function App() {
   return (
@@ -24,7 +24,10 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
-              <Route path="/projects/:projectId" element={<ProjectStudents />} />
+              <Route
+                path="/projects/:projectId"
+                element={<ProjectStudents />}
+              />
               <Route path="/certificates" element={<Certificates />} />
               <Route path="/exams" element={<Exams />} />
               <Route path="/help" element={<Help />} />

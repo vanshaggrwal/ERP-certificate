@@ -1,18 +1,14 @@
 import { useParams } from "react-router-dom";
-import { students } from "../data/students";
+import { students } from "../../data/students";
 
 export default function ProjectStudents() {
   const { projectId } = useParams();
 
-  const filteredStudents = students.filter(
-    (s) => s.projectId === projectId
-  );
+  const filteredStudents = students.filter((s) => s.projectId === projectId);
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-4">
-        Students – {projectId}
-      </h1>
+      <h1 className="text-2xl font-semibold mb-4">Students – {projectId}</h1>
 
       <div className="bg-white rounded-xl shadow p-6">
         <table className="w-full border-separate border-spacing-y-3">

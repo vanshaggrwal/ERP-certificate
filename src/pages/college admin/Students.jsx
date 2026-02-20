@@ -1,4 +1,4 @@
-import { students } from "../data/students";
+import { students } from "../../data/students";
 
 export default function Students() {
   return (
