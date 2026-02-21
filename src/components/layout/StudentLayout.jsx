@@ -7,16 +7,18 @@ export default function StudentLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+   <div className="flex min-h-screen bg-gray-100 overflow-x-hidden">
+      {/* SIDEBAR */}
       <StudentSidebar
         collapsed={collapsed}
         setCollapsed={setCollapsed}
       />
 
-      <div className="flex-1 bg-gray-100">
+      {/* MAIN CONTENT */}
+      <div className="flex flex-col flex-1 min-w-0">
         <StudentNavbar />
 
-        <main className="p-6">
+        <main className="p-6 overflow-x-hidden">
           <Outlet />
         </main>
       </div>
