@@ -1,7 +1,7 @@
 import CourseCard from "../../components/student/CourseCard";
 
 const dummyCourses = [
-  { id: 1, title: "AWS Certification", status: "Training" },
+  { id: 1, title: "AWS Certification", status: "Enrolled" },
   { id: 2, title: "Azure Fundamentals", status: "Exam Appeared" },
   { id: 3, title: "Google Cloud", status: "Passed" },
   { id: 4, title: "DevOps", status: "Failed" },

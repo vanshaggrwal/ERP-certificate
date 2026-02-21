@@ -10,7 +10,7 @@ import {
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
 import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
 
-
+import ProtectedRoute from "./routes/ProtectedRoute";
 import StudentDetails from "./pages/college-admin/StudentDetails";
 
 import AdminDashboard from "./pages/college-admin/Dashboard";
@@ -61,14 +61,28 @@ export default function App() {
         <Route path="/home" element={<Landing />} />
 
         {/* ================= STUDENT ================= */}
-        <Route path="/student" element={<StudentLayout />}>
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <StudentLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<StudentDashboard />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="profile" element={<StudentProfile />} />
         </Route>
 
         {/* ================= COLLEGE ADMIN ================= */}
-        <Route path="/college-admin" element={<CollegeAdminLayout />}>
+        <Route
+          path="/college-admin"
+          element={
+            <ProtectedRoute allowedRoles={["collegeAdmin"]}>
+              <CollegeAdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="projects/:projectId" element={<ProjectStudents />} />

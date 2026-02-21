@@ -1,6 +1,6 @@
 export default function CourseCard({ title, status }) {
   const statusColor = {
-    Training: "bg-yellow-100 text-yellow-700",
+    Enrolled: "bg-yellow-100 text-yellow-700",
     "Exam Appeared": "bg-blue-100 text-blue-700",
     Passed: "bg-green-100 text-green-700",
     Failed: "bg-red-100 text-red-700",
