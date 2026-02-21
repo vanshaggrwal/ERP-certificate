@@ -37,6 +37,7 @@ export default function Login() {
       }
 
       const role = userDoc.data().role;
+      localStorage.setItem("role", role); // store role in localStorage for later use
 
       // 🚀 Redirect based on role
       const redirectPath = getDashboardByRole(role);

@@ -1,0 +1,110 @@
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  LayoutGrid,
+  GraduationCap,
+  BookOpen,
+  UserPlus,
+  Barcode,
+  LogOut,
+} from "lucide-react";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase/config";
+import logo from "../../assets/logo.png";
+import { useState } from "react";
+
+export default function Sidebar() {
+  const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    localStorage.clear();
+    navigate("/login", { replace: true });
+  };
+
+  const menu = [
+    { label: "Dashboard", path: "/superadmin/dashboard", icon: LayoutGrid },
+    { label: "Colleges", path: "/superadmin/colleges", icon: GraduationCap },
+    {
+      label: "Certification Config",
+      path: "/superadmin/certificationconfig",
+      icon: BookOpen,
+    },
+    { label: "Admins", path: "/superadmin/admins", icon: UserPlus },
+    {
+      label: "Project Codes",
+      path: "/superadmin/projectcodes",
+      icon: Barcode,
+    },
+  ];
+
+  return (
+    <aside
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      className={`${
+        expanded ? "w-72" : "w-20"
+      } min-h-screen bg-[#0B2A4A] text-white flex flex-col justify-between
+         transition-all duration-300 ease-in-out`}
+    >
+      {/* TOP */}
+      <div>
+        {/* Logo */}
+        <div className="px-4 py-8 border-b border-white/10 flex items-center justify-center">
+          <img
+            src={logo}
+            alt="Academy Logo"
+            className={`object-contain transition-all duration-300 ${
+              expanded ? "h-16" : "h-10"
+            }`}
+          />
+        </div>
+
+        {/* Profile */}
+        <div
+          className={`mx-3 mt-6 p-4 rounded-xl bg-white/10 flex items-center gap-3 transition-all ${
+            expanded ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          <div className="h-12 w-12 rounded-full bg-gray-300" />
+          <div>
+            <p className="font-semibold leading-tight">Admin Name</p>
+            <span className="text-sm opacity-70">Super Admin</span>
+          </div>
+        </div>
+
+        {/* Menu */}
+        <nav className="mt-8 space-y-2 px-3">
+          {menu.map(({ label, path, icon: Icon }) => (
+            <NavLink
+              key={label}
+              to={path}
+              className={({ isActive }) =>
+                `flex items-center gap-4 px-4 py-3 rounded-xl transition
+                ${
+                  isActive
+                    ? "bg-white text-[#0B2A4A] font-semibold shadow"
+                    : "text-white/90 hover:bg-white/10"
+                }`
+              }
+            >
+              <Icon size={22} />
+              {expanded && <span className="whitespace-nowrap">{label}</span>}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
+
+      {/* SIGN OUT */}
+      <div className="px-3 py-6 border-t border-white/10">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-4 px-4 py-3 rounded-xl text-white/80 hover:bg-white/10 hover:text-red-400 transition w-full"
+        >
+          <LogOut size={22} />
+          {expanded && <span>Sign Out</span>}
+        </button>
+      </div>
+    </aside>
+  );
+}

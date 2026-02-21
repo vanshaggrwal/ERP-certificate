@@ -3,9 +3,10 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading, role } = useAuth();
+  const storedRole = localStorage.getItem("role"); // get role from localStorage
 
-  // ⏳ still checking auth
-  if (loading) {
+  // ⏳ wait until auth + role are ready
+  if (loading || (user && !role)) {
     return (
       <div className="h-screen flex items-center justify-center">
         <p className="text-gray-500">Checking authentication...</p>

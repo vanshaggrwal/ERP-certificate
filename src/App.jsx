@@ -6,23 +6,30 @@ import {
   Outlet,
 } from "react-router-dom";
 
-/* ================= ADMIN (COLLEGE ADMIN UI) ================= */
+/* ================= PUBLIC ================= */
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+
+/* ================= PROTECTED ROUTE ================= */
+import ProtectedRoute from "./routes/ProtectedRoute";
+
+/* ================= SUPER ADMIN ================= */
+import SuperAdminDashboard from "../src/pages/superadmin/Dashboard";
+import SuperAdminColleges from "../src/pages/superadmin/Colleges";
+import SuperAdminCertificationConfig from "../src/pages/superadmin/CertificateConfig"
+import SuperAdminAdmins from "../src/pages/superadmin/Admins"
+import SuperAdminProjectCodes from "../src/pages/superadmin/ProjectCodes"
+/* ================= COLLEGE ADMIN ================= */
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
 import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
 
-import ProtectedRoute from "./routes/ProtectedRoute";
-import StudentDetails from "./pages/college-admin/StudentDetails";
-
 import AdminDashboard from "./pages/college-admin/Dashboard";
 import Students from "./pages/college-admin/Students";
+import StudentDetails from "./pages/college-admin/StudentDetails";
 import ProjectStudents from "./pages/college-admin/ProjectStudents";
 import Certificates from "./pages/college-admin/Certificates";
 import Exams from "./pages/college-admin/Exams";
 import Help from "./pages/college-admin/Help";
-
-/* ================= PUBLIC ================= */
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
 
 /* ================= STUDENT ================= */
 import StudentLayout from "./components/layout/StudentLayout";
@@ -51,14 +58,32 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* DEFAULT → LOGIN */}
+        {/* ================= DEFAULT ================= */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* LOGIN */}
+        {/* ================= AUTH ================= */}
         <Route path="/login" element={<Login />} />
-
-        {/* OPTIONAL LANDING */}
         <Route path="/home" element={<Landing />} />
+
+        {/* ================= SUPER ADMIN ================= */}
+   {/* ================= SUPER ADMIN ================= */}
+<Route
+  path="/superadmin"
+  element={
+    <ProtectedRoute allowedRoles={["superAdmin"]}>
+      <Outlet />
+    </ProtectedRoute>
+  }
+>
+  <Route path="dashboard" element={<SuperAdminDashboard />} />
+  <Route path="colleges" element={<SuperAdminColleges />} />
+  <Route
+    path="certificationconfig"
+    element={<SuperAdminCertificationConfig />}
+  />
+  <Route path="admins" element={<SuperAdminAdmins />} />
+  <Route path="projectcodes" element={<SuperAdminProjectCodes />} />
+</Route>
 
         {/* ================= STUDENT ================= */}
         <Route
@@ -85,15 +110,14 @@ export default function App() {
         >
           <Route index element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />
+          <Route path="students/:studentId" element={<StudentDetails />} />
           <Route path="projects/:projectId" element={<ProjectStudents />} />
-         
-<Route path="students/:studentId" element={<StudentDetails />} />
           <Route path="certificates" element={<Certificates />} />
           <Route path="exams" element={<Exams />} />
           <Route path="help" element={<Help />} />
         </Route>
 
-        {/* FALLBACK */}
+        {/* ================= FALLBACK ================= */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

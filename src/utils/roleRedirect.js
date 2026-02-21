@@ -1,12 +1,13 @@
-export function getDashboardByRole(role) {
+
+export const getDashboardByRole = (role) => {
   switch (role) {
+    case "superAdmin":
+      return "/superadmin/dashboard";
+    case "collegeadmin":
+      return "/college-admin/";
     case "student":
       return "/student/dashboard";
-    case "collegeAdmin":
-      return "/college-admin";
-    case "superAdmin":
-      return "/super-admin";
     default:
       return "/login";
   }
-}
+};

@@ -12,25 +12,18 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-
       if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            setRole(userDoc.data().role);
-          } else {
-            setRole(null);
-          }
-        } catch (err) {
-          console.error("Role fetch error:", err);
-          setRole(null);
-        }
+        setUser(firebaseUser);
+
+        // 🔥 FETCH ROLE
+        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+        setRole(snap.exists() ? snap.data().role : null);
       } else {
+        setUser(null);
         setRole(null);
       }
 
-      setLoading(false);
+      setLoading(false); // ⬅️ IMPORTANT: after role is set
     });
 
     return unsubscribe;
@@ -43,6 +36,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
