@@ -8,6 +8,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,22 +16,30 @@ export function AuthProvider({ children }) {
       if (firebaseUser) {
         setUser(firebaseUser);
 
-        // 🔥 FETCH ROLE
+        // Fetch role and profile fields from Firestore users/{uid}
         const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        setRole(snap.exists() ? snap.data().role : null);
+        if (snap.exists()) {
+          const userData = snap.data();
+          setRole(userData.role || null);
+          setProfile(userData);
+        } else {
+          setRole(null);
+          setProfile(null);
+        }
       } else {
         setUser(null);
         setRole(null);
+        setProfile(null);
       }
 
-      setLoading(false); // ⬅️ IMPORTANT: after role is set
+      setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, role, profile, loading }}>
       {children}
     </AuthContext.Provider>
   );

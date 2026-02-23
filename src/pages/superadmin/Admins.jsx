@@ -76,10 +76,34 @@ export default function Admins() {
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
 
       case "college":
-        // Sort by college name (handle missing/undefined college values)
-        return sorted.sort((a, b) =>
-          (a.college || "").localeCompare(b.college || ""),
-        );
+        // Sort by college: college admins first, then super admins
+        return sorted.sort((a, b) => {
+          const aCollege = (a.college || "").trim();
+          const bCollege = (b.college || "").trim();
+          const aIsCollegeAdmin = a.role === "collegeAdmin";
+          const bIsCollegeAdmin = b.role === "collegeAdmin";
+          const aHasValidCollege =
+            aIsCollegeAdmin &&
+            aCollege.length > 0 &&
+            aCollege !== "Unknown College";
+          const bHasValidCollege =
+            bIsCollegeAdmin &&
+            bCollege.length > 0 &&
+            bCollege !== "Unknown College";
+
+          // 1) College admins with valid colleges
+          if (aHasValidCollege && !bHasValidCollege) return -1;
+          if (!aHasValidCollege && bHasValidCollege) return 1;
+
+          // 2) Remaining college admins (missing/unknown college)
+          if (aIsCollegeAdmin && !bIsCollegeAdmin) return -1;
+          if (!aIsCollegeAdmin && bIsCollegeAdmin) return 1;
+
+          const byCollege = aCollege.localeCompare(bCollege);
+          if (byCollege !== 0) return byCollege;
+
+          return (a.name || "").localeCompare(b.name || "");
+        });
 
       default:
         return sorted;

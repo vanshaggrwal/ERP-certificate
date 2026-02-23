@@ -11,10 +11,23 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../firebase/config";
 import logo from "../../assets/logo.png";
 import { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
+  const { user, role, profile } = useAuth();
+
+  const adminName =
+    profile?.name || user?.displayName || user?.email?.split("@")[0] || "Admin";
+  const effectiveRole = profile?.role || role;
+  const adminRoleLabel =
+    effectiveRole === "collegeAdmin"
+      ? "College Admin"
+      : effectiveRole === "superAdmin"
+        ? "Super Admin"
+        : "Admin";
+  const adminInitial = adminName.charAt(0).toUpperCase();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -66,10 +79,12 @@ export default function Sidebar() {
             expanded ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          <div className="h-12 w-12 rounded-full bg-gray-300" />
+          <div className="h-12 w-12 rounded-full bg-gray-300 text-[#0B2A4A] font-semibold flex items-center justify-center">
+            {adminInitial}
+          </div>
           <div>
-            <p className="font-semibold leading-tight">Admin Name</p>
-            <span className="text-sm opacity-70">Super Admin</span>
+            <p className="font-semibold leading-tight">{adminName}</p>
+            <span className="text-sm opacity-70">{adminRoleLabel}</span>
           </div>
         </div>
 
