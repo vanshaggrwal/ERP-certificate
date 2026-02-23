@@ -27,9 +27,7 @@ export default function CollegeActionsMenu({ onEdit }) {
 
       {open && (
         <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border z-20">
-          <button className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-            📊 View Students
-          </button>
+        
            <button
           onClick={onEdit}
           className="flex w-full px-4 py-2 text-sm hover:bg-gray-100"

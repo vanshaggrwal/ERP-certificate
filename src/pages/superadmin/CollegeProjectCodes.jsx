@@ -3,14 +3,14 @@ import { projectCodes } from "../../data/projectCodes";
 import Sidebar from "../../components/layout/Sidebar";
 
 export default function CollegeProjectCodes() {
-  const { collegeId } = useParams();
+  
   const navigate = useNavigate();
 
+const { collegeId } = useParams();
 
-
-  const filtered = projectCodes.filter(
-    (p) => p.collegeId === collegeId
-  );
+const filtered = projectCodes.filter(
+  (p) => p.collegeId === collegeId
+);
 
   return (
     <div className="flex min-h-screen bg-gray-100">

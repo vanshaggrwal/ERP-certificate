@@ -80,11 +80,14 @@ export default function App() {
     <Route index element={<Navigate to="dashboard" replace />} />
     <Route path="dashboard" element={<SuperAdminDashboard />} />
   <Route path="colleges" element={<SuperAdminColleges />} />
- <Route
+  <Route
   path="colleges/:collegeId/project-codes"
   element={<CollegeProjectCodes />}
 />
-  <Route path="project-codes/:projectCode/students" element={<ProjectCodeStudents />} />
+  <Route
+    path="project-codes/:projectCode/students"
+    element={<ProjectCodeStudents />}
+/>
   <Route path="certificationconfig" element={<SuperAdminCertificationConfig />} />
   <Route path="admins" element={<SuperAdminAdmins />} />
   <Route path="projectcodes" element={<SuperAdminProjectCodes />} />

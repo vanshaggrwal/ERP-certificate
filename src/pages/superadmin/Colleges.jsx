@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
 import { colleges } from "../../data/colleges";
 import CollegeCard from "../../components/superadmin/CollegeCard";
 import Sidebar from "../../components/layout/Sidebar";
@@ -8,6 +8,7 @@ import AddEditCollegeModal from "../../components/superadmin/AddEditCollegeModal
 export default function Colleges() {
     const [open, setOpen] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
+  const navigate = useNavigate();
 
   const openAdd = () => {
     setSelectedCollege(null);
@@ -43,10 +44,13 @@ export default function Colleges() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {colleges.map((college) => (
            <CollegeCard
-              key={college.id}
-              college={college}
-              onEdit={() => openEdit(college)}
-            />
+    key={college.id}
+    college={college}
+    onEdit={() => openEdit(college)}
+    onOpen={() =>
+      navigate(`/superadmin/colleges/${college.id}/project-codes`)
+    }
+  />
           ))}
         </div>
       </div>
