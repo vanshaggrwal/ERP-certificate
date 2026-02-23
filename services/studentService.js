@@ -9,13 +9,41 @@ import {
   query,
   where,
   addDoc,
+  writeBatch,
+  increment,
 } from "firebase/firestore";
 
 const STUDENTS_COLLECTION = "students";
+const CERTIFICATES_COLLECTION = "certificates";
+const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION = "certificateProjectEnrollments";
 
 // Add a student to Firestore
 export const addStudent = async (studentData) => {
   try {
+    const enrollmentMappingsQuery = query(
+      collection(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION),
+      where("projectCode", "==", studentData.projectId),
+    );
+    const enrollmentMappingsSnapshot = await getDocs(enrollmentMappingsQuery);
+
+    const certificateIds = [
+      ...new Set(
+        enrollmentMappingsSnapshot.docs
+          .map((enrollmentDoc) => enrollmentDoc.data().certificateId)
+          .filter(Boolean),
+      ),
+    ];
+
+    const certificateDocs = await Promise.all(
+      certificateIds.map((certificateId) =>
+        getDoc(doc(db, CERTIFICATES_COLLECTION, certificateId)),
+      ),
+    );
+
+    const certificateNames = certificateDocs
+      .map((certificateDoc) => (certificateDoc.exists() ? certificateDoc.data().name : ""))
+      .filter(Boolean);
+
     const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), {
       id: studentData.id,
       name: studentData.name,
@@ -28,8 +56,10 @@ export const addStudent = async (studentData) => {
       semesterLabel: studentData.semesterLabel || "",
       trainingType: studentData.trainingType || "",
       currentSession: studentData.currentSession || "",
-      certificateIds: studentData.certificateIds || [],
-      certificate: studentData.certificate || "",
+      certificateIds,
+      enrolledCertificates: certificateNames.filter(Boolean),
+      certificate: certificateNames[0] || studentData.certificate || "",
+      certificateStatus: certificateIds.length > 0 ? "enrolled" : "",
       progress: studentData.progress || "0%",
       exams: studentData.exams || "0 / 0",
       tenthPercentage: studentData.tenthPercentage,
@@ -40,6 +70,17 @@ export const addStudent = async (studentData) => {
       phone: studentData.phone,
       createdAt: new Date(),
     });
+
+    if (certificateIds.length > 0) {
+      const batch = writeBatch(db);
+      certificateIds.forEach((certificateId) => {
+        batch.update(doc(db, CERTIFICATES_COLLECTION, certificateId), {
+          enrolledCount: increment(1),
+        });
+      });
+      await batch.commit();
+    }
+
     console.log("Student added with ID:", docRef.id);
     return docRef.id;
   } catch (error) {
