@@ -3,6 +3,7 @@ import Sidebar from "../../components/layout/Sidebar";
 import { Pencil } from "lucide-react";
 import { certifications as defaultCertifications } from "../../data/certifications";
 import AddCertificateModal from "../../components/superadmin/AddCertificateModal";
+import EnrollProjectCodeModal from "../../components/superadmin/EnrollProjectCodeModal";
 import { getAllCertificates } from "../../../services/certificateService";
 import { getAllProjectCodes } from "../../../services/projectCodeService";
 
@@ -12,12 +13,12 @@ export default function CertificateConfig() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedCertificate, setSelectedCertificate] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [filters, setFilters] = useState({
     platform: "All",
     level: "All",
     domain: "All",
-    projectCode: "All",
   });
 
   useEffect(() => {
@@ -37,7 +38,6 @@ export default function CertificateConfig() {
         setCertifications(
           defaultCertifications.map((item) => ({
             ...item,
-            projectCode: "-",
             enrolledCount: 0,
           })),
         );
@@ -56,25 +56,29 @@ export default function CertificateConfig() {
   const platforms = ["All", ...new Set(certifications.map((c) => c.platform).filter(Boolean))];
   const levels = ["All", ...new Set(certifications.map((c) => c.level).filter(Boolean))];
   const domains = ["All", ...new Set(certifications.map((c) => c.domain).filter(Boolean))];
-  const projectCodeOptions = ["All", ...new Set(certifications.map((c) => c.projectCode).filter(Boolean))];
 
   const filteredCertifications = useMemo(() => {
     return certifications.filter((c) => {
       return (
         (filters.platform === "All" || c.platform === filters.platform) &&
         (filters.level === "All" || c.level === filters.level) &&
-        (filters.domain === "All" || c.domain === filters.domain) &&
-        (filters.projectCode === "All" || c.projectCode === filters.projectCode)
+        (filters.domain === "All" || c.domain === filters.domain)
       );
     });
   }, [certifications, filters]);
 
   const resetFilters = () =>
-    setFilters({ platform: "All", level: "All", domain: "All", projectCode: "All" });
+    setFilters({ platform: "All", level: "All", domain: "All" });
 
-  const handleCertificateAdded = async (enrolledCount) => {
+  const handleCertificateAdded = async () => {
     await fetchData();
-    setSuccessMessage(`Certificate created. ${enrolledCount} students enrolled from selected project code.`);
+    setSuccessMessage("Certificate created. Click the certificate row to assign project codes.");
+    setTimeout(() => setSuccessMessage(""), 3000);
+  };
+
+  const handleEnrolled = async () => {
+    await fetchData();
+    setSuccessMessage("Project code enrolled. Matching students were updated.");
     setTimeout(() => setSuccessMessage(""), 3000);
   };
 
@@ -153,21 +157,6 @@ export default function CertificateConfig() {
               ))}
             </select>
           </div>
-          <div className="flex-1">
-            <label className="text-sm font-medium">Project Code</label>
-            <select
-              value={filters.projectCode}
-              onChange={(e) =>
-                setFilters({ ...filters, projectCode: e.target.value })
-              }
-              className="w-full mt-1 h-9 rounded bg-white px-3"
-            >
-              {projectCodeOptions.map((projectCode) => (
-                <option key={projectCode}>{projectCode}</option>
-              ))}
-            </select>
-          </div>
-
           <button
             onClick={resetFilters}
             className="bg-[#0B2A4A] text-white px-5 py-2 rounded-lg"
@@ -177,13 +166,12 @@ export default function CertificateConfig() {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-7 text-sm font-semibold px-6">
+        <div className="grid grid-cols-6 text-sm font-semibold px-6">
           <span>Domain</span>
           <span>Certificate Name</span>
           <span>Platform / Organisation</span>
           <span>Exam Code</span>
           <span>Level</span>
-          <span>Project Code</span>
           <span className="text-right">Enrolled</span>
         </div>
 
@@ -203,19 +191,35 @@ export default function CertificateConfig() {
           {filteredCertifications.map((c) => (
             <div
               key={c.id}
-              className="bg-white rounded-xl px-6 py-4 flex items-center justify-between"
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedCertificate(c)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedCertificate(c);
+                }
+              }}
+              className="bg-white rounded-xl px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
             >
-              <div className="grid grid-cols-7 w-full text-sm">
+              <div className="grid grid-cols-6 w-full text-sm">
                 <span>{c.domain}</span>
                 <span>{c.name}</span>
                 <span>{c.platform}</span>
                 <span>{c.examCode}</span>
                 <span>{c.level}</span>
-                <span>{c.projectCode || "-"}</span>
                 <span className="text-right">{c.enrolledCount ?? 0} students</span>
               </div>
 
-              <button className="ml-4 text-gray-600 hover:text-black">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedCertificate(c);
+                }}
+                className="ml-4 text-gray-600 hover:text-black"
+                title="Enroll project code"
+              >
                 <Pencil size={16} />
               </button>
             </div>
@@ -225,9 +229,17 @@ export default function CertificateConfig() {
 
       {showAddModal && (
         <AddCertificateModal
-          projectCodes={projectCodes}
           onClose={() => setShowAddModal(false)}
           onCertificateAdded={handleCertificateAdded}
+        />
+      )}
+
+      {selectedCertificate && (
+        <EnrollProjectCodeModal
+          certificate={selectedCertificate}
+          projectCodes={projectCodes}
+          onClose={() => setSelectedCertificate(null)}
+          onEnrolled={handleEnrolled}
         />
       )}
     </div>

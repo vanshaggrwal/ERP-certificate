@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { createCertificateAndEnrollStudents } from "../../../services/certificateService";
 
-export default function AddCertificateModal({ projectCodes, onClose, onCertificateAdded }) {
+export default function AddCertificateModal({ onClose, onCertificateAdded }) {
   const [form, setForm] = useState({
     domain: "",
     name: "",
     platform: "",
     examCode: "",
     level: "",
-    projectCode: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,7 +23,6 @@ export default function AddCertificateModal({ projectCodes, onClose, onCertifica
     if (!form.platform.trim()) return "Platform is required";
     if (!form.examCode.trim()) return "Exam code is required";
     if (!form.level.trim()) return "Level is required";
-    if (!form.projectCode.trim()) return "Project code is required";
     return "";
   };
 
@@ -39,8 +37,8 @@ export default function AddCertificateModal({ projectCodes, onClose, onCertifica
     setError("");
     setLoading(true);
     try {
-      const result = await createCertificateAndEnrollStudents(form);
-      onCertificateAdded(result.enrolledCount);
+      await createCertificateAndEnrollStudents(form);
+      onCertificateAdded();
       onClose();
     } catch (submitError) {
       setError("Failed to create certificate");
@@ -113,23 +111,6 @@ export default function AddCertificateModal({ projectCodes, onClose, onCertifica
               className="h-10 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Project Code</label>
-            <select
-              name="projectCode"
-              value={form.projectCode}
-              onChange={handleChange}
-              className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none"
-            >
-              <option value="">Select project code</option>
-              {projectCodes.map((projectCode) => (
-                <option key={projectCode.id} value={projectCode.code}>
-                  {projectCode.code}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="col-span-full mt-2 flex justify-end gap-3">
             <button
               type="button"
