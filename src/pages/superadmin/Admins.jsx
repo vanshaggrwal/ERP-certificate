@@ -14,6 +14,7 @@ export default function Admins() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [sortBy, setSortBy] = useState("role"); // "role", "name", "college"
+  const [filterCollege, setFilterCollege] = useState("all"); // Filter by college
 
   // Fetch all admins from Firestore
   const fetchAdmins = async () => {
@@ -60,7 +61,13 @@ export default function Admins() {
 
   // Sort admins based on sortBy criteria
   const getSortedAdmins = () => {
-    const sorted = [...admins];
+    // First, filter by college if selected
+    let filtered = admins;
+    if (filterCollege !== "all") {
+      filtered = admins.filter((admin) => admin.college === filterCollege);
+    }
+
+    const sorted = [...filtered];
 
     switch (sortBy) {
       case "role":
@@ -108,6 +115,17 @@ export default function Admins() {
       default:
         return sorted;
     }
+  };
+
+  // Get all unique colleges from admins
+  const getUniquColleges = () => {
+    const colleges = new Set();
+    admins.forEach((admin) => {
+      if (admin.college && admin.college !== "Unknown College") {
+        colleges.add(admin.college);
+      }
+    });
+    return Array.from(colleges).sort();
   };
 
   const sortedAdmins = getSortedAdmins();

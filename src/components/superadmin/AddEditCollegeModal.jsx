@@ -88,7 +88,6 @@ export default function AddEditCollegeModal({
     if (!validateForm()) return;
 
     setLoading(true);
-    setLoading(true);
     try {
       // 1. Create college in Firestore
       await addCollege({
