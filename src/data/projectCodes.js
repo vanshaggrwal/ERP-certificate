@@ -2,8 +2,8 @@ export const projectCodes = [
   {
     id: 1,
     code: "RCOEM/ENGG/3rd/OT/26-27",
-    collegeId: "rcoem", // 🔴 NEW (logic)
-    college: "Ramdev Baba College of Engineering", // UI only
+    collegeCode: "RCOEM",   // ✅ MATCHES colleges.code
+    college: "Ramdev Baba College of Engineering",
     matched: true,
     course: "Engineering",
     year: "3",
@@ -13,7 +13,7 @@ export const projectCodes = [
   {
     id: 2,
     code: "MCOET/ENGG/3rd/TP/26-27",
-    collegeId: "mcoet",
+    collegeCode: "MCOET",
     college: "Mauli College Of Engineering And Technology",
     matched: true,
     course: "Engineering",
@@ -24,8 +24,8 @@ export const projectCodes = [
   {
     id: 3,
     code: "PDEA/ENGG/3rd/TP/26-27",
-    collegeId: "pdea",
-    college: "Pune District Education Association College Of Engineering",
+    collegeCode: "PDEA",
+    college: "PDEA College Of Engineering",
     matched: false,
     course: "Engineering",
     year: "3",
@@ -35,7 +35,7 @@ export const projectCodes = [
   {
     id: 4,
     code: "IUA/MBA/1st/TP/26-27",
-    collegeId: "iua",
+    collegeCode: "IUA",
     college: "Indira University - Pune",
     matched: true,
     course: "MBA",

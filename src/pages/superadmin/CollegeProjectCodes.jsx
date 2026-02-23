@@ -6,15 +6,16 @@ export default function CollegeProjectCodes() {
   const { collegeId } = useParams();
   const navigate = useNavigate();
 
-const filtered = projectCodes.filter(
-  (p) => p.collegeId === collegeId
-);
+
+
+  const filtered = projectCodes.filter(
+    (p) => p.collegeId === collegeId
+  );
+
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
       <div className="flex-1 p-8 space-y-6">
         <h1 className="text-2xl font-semibold">
           Project Codes
@@ -33,7 +34,7 @@ const filtered = projectCodes.filter(
             <tbody>
               {filtered.map((row) => (
                 <tr
-                  key={row.code}
+                  key={row.id}
                   className="border-t cursor-pointer hover:bg-gray-50"
                   onClick={() =>
                     navigate(
@@ -41,9 +42,7 @@ const filtered = projectCodes.filter(
                     )
                   }
                 >
-                  <td className="px-6 py-4 font-medium">
-                    {row.code}
-                  </td>
+                  <td className="px-6 py-4 font-medium">{row.code}</td>
                   <td className="px-6 py-4">{row.course}</td>
                   <td className="px-6 py-4">{row.type}</td>
                 </tr>
@@ -51,11 +50,8 @@ const filtered = projectCodes.filter(
 
               {filtered.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={3}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    No project codes found for this college
+                  <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                    No project codes found
                   </td>
                 </tr>
               )}

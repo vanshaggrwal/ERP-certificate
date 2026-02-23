@@ -77,21 +77,15 @@ export default function App() {
     </ProtectedRoute>
   }
 >
-  <Route path="dashboard" element={<SuperAdminDashboard />} />
+    <Route index element={<Navigate to="dashboard" replace />} />
+    <Route path="dashboard" element={<SuperAdminDashboard />} />
   <Route path="colleges" element={<SuperAdminColleges />} />
-   <Route
-    path="colleges/:collegeId/project-codes"
-    element={<CollegeProjectCodes />}
-  />
-
-  <Route
-    path="project-codes/:projectCode/students"
-    element={<ProjectCodeStudents />}
-  />
-  <Route
-    path="certificationconfig"
-    element={<SuperAdminCertificationConfig />}
-  />
+ <Route
+  path="colleges/:collegeId/project-codes"
+  element={<CollegeProjectCodes />}
+/>
+  <Route path="project-codes/:projectCode/students" element={<ProjectCodeStudents />} />
+  <Route path="certificationconfig" element={<SuperAdminCertificationConfig />} />
   <Route path="admins" element={<SuperAdminAdmins />} />
   <Route path="projectcodes" element={<SuperAdminProjectCodes />} />
 </Route>
@@ -105,8 +99,11 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+
           <Route index element={<StudentDashboard />} />
+          
           <Route path="dashboard" element={<StudentDashboard />} />
+          
           <Route path="profile" element={<StudentProfile />} />
         </Route>
 
@@ -118,6 +115,7 @@ export default function App() {
               <CollegeAdminLayout />
             </ProtectedRoute>
           }
+
         >
           <Route index element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />

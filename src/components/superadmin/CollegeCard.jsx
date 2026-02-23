@@ -4,12 +4,12 @@ export default function CollegeCard({ college, onEdit, onOpen }) {
   return (
     <div
       onClick={onOpen}
-      className="relative bg-gray-200 rounded-2xl shadow p-5 cursor-pointer hover:shadow-md transition"
+      className="relative bg-gray-200 rounded-2xl shadow p-5 cursor-pointer"
     >
       {/* Actions */}
       <div
         className="absolute top-3 right-3 z-20"
-        onClick={(e) => e.stopPropagation()} // ⛔ prevent navigation
+        onClick={(e) => e.stopPropagation()}
       >
         <CollegeActionsMenu onEdit={onEdit} />
       </div>
