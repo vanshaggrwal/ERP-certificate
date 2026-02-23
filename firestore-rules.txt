@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // TEMP: allow authenticated users to read users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null;
+    }
+
+    // allow student data later
+    match /students/{studentId} {
+      allow read: if request.auth != null;
+    }
+
+    // Allow authenticated users to read and write colleges
+    match /college/{collegeCode} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+  }
+}

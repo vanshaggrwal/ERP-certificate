@@ -1,0 +1,112 @@
+import { db, auth } from "../src/firebase/config";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+} from "firebase/firestore";
+
+const USERS_COLLECTION = "users";
+
+// Create a college admin user in both Firebase Auth and Firestore
+export const createCollegeAdmin = async (adminData, collegeCode) => {
+  try {
+    // 1. Create user in Firebase Authentication
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      adminData.email,
+      adminData.password,
+    );
+
+    const uid = userCredential.user.uid;
+
+    // 2. Add user to Firestore with collegeAdmin role
+    await setDoc(doc(db, USERS_COLLECTION, uid), {
+      uid: uid,
+      name: adminData.name,
+      email: adminData.email,
+      role: "collegeAdmin",
+      collegeCode: collegeCode,
+      createdAt: new Date(),
+    });
+
+    console.log("College admin created:", uid);
+    return uid;
+  } catch (error) {
+    console.error("Error creating college admin:", error);
+    throw error;
+  }
+};
+
+// Get user by email
+export const getUserByEmail = async (email) => {
+  try {
+    const usersRef = collection(db, USERS_COLLECTION);
+    // Note: Firestore doesn't have a direct "where email" query in basic setup
+    // This is a limitation - you might want to add an index or use a different approach
+    console.log("Getting user by email:", email);
+    return null;
+  } catch (error) {
+    console.error("Error getting user by email:", error);
+    throw error;
+  }
+};
+
+// Get user by UID
+export const getUserByUID = async (uid) => {
+  try {
+    const docRef = doc(db, USERS_COLLECTION, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return {
+        uid: docSnap.id,
+        ...docSnap.data(),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting user by UID:", error);
+    throw error;
+  }
+};
+
+// Get user by collegeCode
+export const getUserByCollegeCode = async (collegeCode) => {
+  try {
+    const q = query(
+      collection(db, USERS_COLLECTION),
+      where("collegeCode", "==", collegeCode),
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      return {
+        uid: userDoc.id,
+        ...userDoc.data(),
+      };
+    }
+    console.log("No user found for college code:", collegeCode);
+    return null;
+  } catch (error) {
+    console.error("Error getting user by college code:", error);
+    throw error;
+  }
+};
+
+// Delete a college admin user from Firestore
+export const deleteCollegeAdmin = async (uid) => {
+  try {
+    // Delete from Firestore
+    await deleteDoc(doc(db, USERS_COLLECTION, uid));
+    console.log("College admin deleted from Firestore:", uid);
+    return true;
+  } catch (error) {
+    console.error("Error deleting college admin:", error);
+    throw error;
+  }
+};
