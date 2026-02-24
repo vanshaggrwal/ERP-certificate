@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { read, utils } from "xlsx";
 import { db } from "../../firebase/config";
 import {
   writeBatch,
@@ -70,13 +69,53 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
     setSuccess(null);
 
     try {
+      const fileName = String(file.name || "").toLowerCase();
+      const isCsv = fileName.endsWith(".csv");
+
+      if (isCsv) {
+        const text = await file.text();
+        const rows = parseCsvToObjects(text);
+        if (!rows || rows.length === 0) {
+          throw new Error("CSV is empty");
+        }
+
+        const headers = Object.keys(rows[0]).map(normalizeHeader);
+        const missing = REQUIRED_HEADERS.filter(
+          (h) => !headers.includes(normalizeHeader(h)),
+        );
+
+        if (missing.length > 0) {
+          setMissingColumns(missing);
+          setError(`Found ${missing.length} missing required column(s).`);
+          setLoading(false);
+          return;
+        }
+
+        const headerMap = {};
+        Object.keys(rows[0]).forEach((orig) => {
+          headerMap[normalizeHeader(orig)] = orig;
+        });
+
+        await processRows(
+          rows,
+          headerMap,
+          projectCode,
+          onStudentAdded,
+          setLoading,
+          setError,
+          setSuccess,
+        );
+        return;
+      }
+
+      const xlsxModule = await import(/* @vite-ignore */ "xlsx");
       const data = await file.arrayBuffer();
-      const workbook = read(data);
+      const workbook = xlsxModule.read(data);
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
 
       // Read as raw arrays first to detect header row
-      const rowsArr = utils.sheet_to_json(sheet, { header: 1, defval: null });
+      const rowsArr = xlsxModule.utils.sheet_to_json(sheet, { header: 1, defval: null });
       if (!rowsArr || rowsArr.length === 0) {
         throw new Error("Excel is empty");
       }
@@ -98,7 +137,7 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
 
       // If no header row found in first 5 rows, try using first row as before
       if (bestIdx === -1 || bestMatches === 0) {
-        const rows = utils.sheet_to_json(sheet, { defval: null });
+        const rows = xlsxModule.utils.sheet_to_json(sheet, { defval: null });
         if (!rows || rows.length === 0) {
           throw new Error("Excel is empty");
         }
@@ -320,7 +359,14 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
       );
     } catch (e) {
       console.error(e);
-      setError(e.message || "Failed during duplicate detection/import");
+      const isXlsxImportError = String(e?.message || "").includes(
+        "Failed to resolve module specifier",
+      );
+      setError(
+        isXlsxImportError
+          ? "XLSX parser not available in this environment. Please import CSV for now."
+          : e.message || "Failed during duplicate detection/import",
+      );
       setLoading(false);
     }
   }
@@ -440,6 +486,78 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
       )}
     </div>
   );
+}
+
+function parseCsvToObjects(csvText) {
+  const lines = parseCsvLines(csvText || "");
+  if (!lines.length) return [];
+
+  const headers = lines[0].map((cell) => String(cell || "").trim());
+  return lines
+    .slice(1)
+    .filter((line) => line.some((cell) => String(cell || "").trim() !== ""))
+    .map((line) => {
+      const rowObj = {};
+      headers.forEach((header, idx) => {
+        rowObj[header] = line[idx] ?? null;
+      });
+      return rowObj;
+    });
+}
+
+function parseCsvLines(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  const pushCell = () => {
+    row.push(cell);
+    cell = "";
+  };
+
+  const pushRow = () => {
+    if (row.length > 0) {
+      rows.push(row);
+    }
+    row = [];
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && ch === ",") {
+      pushCell();
+      continue;
+    }
+
+    if (!inQuotes && (ch === "\n" || ch === "\r")) {
+      if (ch === "\r" && next === "\n") i += 1;
+      pushCell();
+      pushRow();
+      continue;
+    }
+
+    cell += ch;
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    pushCell();
+    pushRow();
+  }
+
+  return rows;
 }
 
 async function processRows(

@@ -1,6 +1,7 @@
-// npm install recharts
 import { useMemo } from "react";
 import { projects } from "../../data/projects";
+import { students } from "../../data/students";
+import { certifications } from "../../data/certifications";
 import {
   BarChart,
   Bar,
@@ -14,14 +15,20 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { Award, BookOpenCheck, Layers3, Users } from "lucide-react";
 
 export default function AdminDashboard() {
-  const COLORS = ["#2563eb", "#16a34a", "#dc2626", "#f59e0b"];
+  const COLORS = ["#0B2A4A", "#1D5FA8", "#6BC7A7", "#D29A2D"];
+
+  const parseProgress = (progressValue) => {
+    const parsed = Number(String(progressValue || "").replace("%", "").trim());
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
 
   const data = useMemo(() => {
     const byCourse = {};
     projects.forEach((p) => {
-      byCourse[p.course] = (byCourse[p.course] || 0) + 1;
+      byCourse[p.courseCode] = (byCourse[p.courseCode] || 0) + p.totalStudents;
     });
 
     const barData = Object.keys(byCourse).map((k) => ({
@@ -34,153 +41,119 @@ export default function AdminDashboard() {
       value: byCourse[k],
     }));
 
-    const total = pieData.reduce((a, b) => a + b.value, 0);
-    const max = Math.max(...pieData.map((d) => d.value));
-    const percent = total ? Math.round((max / total) * 100) : 0;
+    const progressBands = [
+      { name: "0-40%", value: 0 },
+      { name: "41-70%", value: 0 },
+      { name: "71-100%", value: 0 },
+    ];
+
+    students.forEach((student) => {
+      const progress = parseProgress(student.progress);
+      if (progress <= 40) progressBands[0].value += 1;
+      else if (progress <= 70) progressBands[1].value += 1;
+      else progressBands[2].value += 1;
+    });
+
+    const avgProgress =
+      students.length > 0
+        ? Math.round(
+            students.reduce((sum, student) => sum + parseProgress(student.progress), 0) /
+              students.length,
+          )
+        : 0;
+
+    const topProjects = [...projects]
+      .sort((a, b) => b.totalStudents - a.totalStudents)
+      .slice(0, 5);
 
     return {
-      totalEnrollments: projects.length,
-      completionRate: 68,
-      certificatesIssued: Math.floor(projects.length * 0.68),
+      totalEnrollments: students.length,
+      completionRate: `${avgProgress}%`,
+      certificatesIssued: certifications.length,
+      activeProjectCodes: projects.length,
       barData,
       pieData,
-      percent,
+      progressBands,
+      topProjects,
     };
   }, []);
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <StatCard title="Total Enrollments" value={data.totalEnrollments} />
-        <StatCard title="Completion Rate" value={`${data.completionRate}%`} />
-        <StatCard title="Certificates Issued" value={data.certificatesIssued} />
+    <div className="space-y-6">
+      <section className="rounded-3xl bg-gradient-to-r from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7] px-6 py-7 text-white shadow-sm">
+        <h1 className="text-2xl font-semibold">College Admin Control Center</h1>
+        <p className="mt-1 text-sm text-white/90">
+          Monitor enrollments, performance trends, and certification health.
+        </p>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Total Enrollments" value={data.totalEnrollments} icon={<Users size={18} />} />
+        <StatCard title="Avg Completion" value={data.completionRate} icon={<BookOpenCheck size={18} />} />
+        <StatCard title="Certificates" value={data.certificatesIssued} icon={<Award size={18} />} />
+        <StatCard title="Project Codes" value={data.activeProjectCodes} icon={<Layers3 size={18} />} />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Enrollment by Department */}
-        <div className="bg-white rounded-xl shadow p-6 h-[340px]">
-  <h3 className="font-semibold mb-4">Enrollments by Department</h3>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Enrollment by Course">
+          <ResponsiveContainer width="100%" height={270}>
+            <BarChart data={data.barData} barSize={42}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+              <XAxis dataKey="course" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#1D5FA8" radius={[10, 10, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Panel>
 
-  <ResponsiveContainer width="100%" height="100%">
-    <BarChart
-      data={data.barData}
-      barSize={48}
-      margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-    >
-      <CartesianGrid
-        strokeDasharray="3 3"
-        vertical={false}
-        stroke="#e5e7eb"
-      />
-      
-      <XAxis
-  dataKey="course"
-  interval={0}
-  angle={-20}
-  textAnchor="end"
-  height={70}
-  tick={{ fontSize: 11 }}
-  axisLine={false}
-  tickLine={false}
-/>
-      <YAxis
-        allowDecimals={false}
-        tick={{ fontSize: 12 }}
-        axisLine={false}
-        tickLine={false}
-      />
-      <Tooltip
-        cursor={{ fill: "#f1f5f9" }}
-        contentStyle={{
-          borderRadius: "8px",
-          border: "none",
-          boxShadow: "0 10px 20px rgba(0,0,0,0.08)",
-        }}
-      />
-      <Bar
-  dataKey="count"
-  radius={[12, 12, 0, 0]}
-  fill="url(#colorGradient)"
-  isAnimationActive={false}
-/>
-      <defs>
-        <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#1e40af" />
-        </linearGradient>
-      </defs>
-    </BarChart>
-  </ResponsiveContainer>
-</div>
+        <Panel title="Student Progress Distribution">
+          <ResponsiveContainer width="100%" height={270}>
+            <PieChart>
+              <Pie data={data.progressBands} dataKey="value" nameKey="name" innerRadius={60} outerRadius={92}>
+                {data.progressBands.map((entry, index) => (
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </Panel>
+      </div>
 
-        {/* Course Popularity */}
-  <div className="bg-white rounded-xl shadow p-6 h-[360px]">
-  <h3 className="font-semibold mb-4">Course Popularity</h3>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Course Share">
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie data={data.pieData} dataKey="value" nameKey="name" outerRadius={92} label>
+                {data.pieData.map((entry, index) => (
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </Panel>
 
-  <ResponsiveContainer width="100%" height="100%">
-    <PieChart>
-      <Pie
-        data={data.pieData}
-        dataKey="value"
-        nameKey="name"
-        innerRadius={70}
-        outerRadius={95}
-        paddingAngle={6}
-        stroke="none"
-      >
-        {data.pieData.map((_, i) => (
-          <Cell
-            key={i}
-            fill={COLORS[i % COLORS.length]}
-          />
-        ))}
-      </Pie>
+        <Panel title="Recent Project Batches">
+          <div className="space-y-3">
+            {data.topProjects.map((project) => (
+              <div
+                key={project.id}
+                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-gray-900">{project.id}</p>
+                <p className="text-xs text-gray-600">{project.course}</p>
+                <p className="mt-1 text-xs text-[#0B2A4A]">{project.totalStudents} students</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
 
-      {/* Center Text */}
-      <text
-        x="50%"
-        y="45%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        className="text-2xl font-bold fill-gray-800"
-      >
-        {data.percent}%
-      </text>
-      <text
-        x="50%"
-        y="55%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        className="text-sm fill-gray-500"
-      >
-        Top Course
-      </text>
-
-      <Tooltip />
-
-      {/* Legend moved BELOW */}
-      <Legend
-        verticalAlign="bottom"
-        iconType="circle"
-        height={60}
-        wrapperStyle={{
-          fontSize: "12px",
-          paddingTop: "12px",
-        }}
-      />
-    </PieChart>
-  </ResponsiveContainer>
-</div>
-</div>
-            
-
-      {/* Live Student Tracking Table */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="font-semibold mb-4">
-          Live Student Tracking Table
-        </h3>
+      <Panel title="Live Student Tracking Table">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500">
@@ -201,18 +174,30 @@ export default function AdminDashboard() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     </div>
   );
 }
 
 /* Helper Components */
 
-function StatCard({ title, value }) {
+function StatCard({ title, value, icon }) {
   return (
-    <div className="bg-white rounded-xl shadow p-6">
-      <p className="text-sm text-gray-500">{title}</p>
-      <h2 className="text-2xl font-semibold mt-2">{value}</h2>
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">{title}</p>
+        <span className="rounded-lg bg-[#0B2A4A]/10 p-2 text-[#0B2A4A]">{icon}</span>
+      </div>
+      <h2 className="mt-2 text-2xl font-semibold text-gray-900">{value}</h2>
+    </div>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <h3 className="mb-4 text-base font-semibold text-gray-900">{title}</h3>
+      {children}
     </div>
   );
 }

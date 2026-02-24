@@ -4,10 +4,9 @@ export default function CollegeCard({ college, onEdit, onDelete, onOpen }) {
   return (
     <div
       onClick={() => {
-        console.log("CARD CLICKED:", college.collegeCode);
         onOpen();
       }}
-      className="relative bg-gray-200 rounded-2xl shadow p-5 cursor-pointer"
+      className="relative cursor-pointer rounded-2xl border border-transparent bg-gray-200 p-5 shadow transition-all duration-200 hover:-translate-y-1 hover:border-[#0B2A4A]/20 hover:shadow-lg"
     >
       <div
         className="absolute top-3 right-3 z-20"

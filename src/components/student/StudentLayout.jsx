@@ -1,13 +1,13 @@
 import { useState } from "react";
-import StudentSidebar from "../layout/StudentSidebar";
-import StudentNavbar from "../layout/StudentNavbar";
+import StudentSidebar from "./StudentSidebar";
+import StudentNavbar from "./StudentNavbar";
 import { Outlet } from "react-router-dom";
 
 export default function StudentLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="relative flex min-h-screen bg-gray-100 overflow-x-hidden">
+    <div className="relative flex h-screen bg-gray-100 overflow-hidden">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
@@ -23,10 +23,10 @@ export default function StudentLayout() {
       />
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-col flex-1 min-w-0 w-full">
+      <div className="flex h-full min-w-0 w-full flex-1 flex-col">
         <StudentNavbar onMenuClick={() => setMobileMenuOpen(true)} />
 
-        <main className="p-4 sm:p-6 overflow-x-hidden">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           <Outlet />
         </main>
       </div>
