@@ -36,7 +36,7 @@ import Exams from "./pages/college-admin/Exams";
 import Help from "./pages/college-admin/Help";
 
 /* ================= STUDENT ================= */
-import StudentLayout from "./components/layout/StudentLayout";
+import StudentLayout from "./components/student/StudentLayout";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
 
