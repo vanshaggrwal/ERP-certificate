@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "../../components/layout/Sidebar";
 import { getStudentByDocId } from "../../../services/studentService";
@@ -13,11 +13,7 @@ export default function StudentCertificateProgress() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchStudentData();
-  }, [studentDocId]);
-
-  const fetchStudentData = async () => {
+  const fetchStudentData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -41,7 +37,11 @@ export default function StudentCertificateProgress() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentDocId]);
+
+  useEffect(() => {
+    fetchStudentData();
+  }, [fetchStudentData]);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -90,15 +90,35 @@ export default function StudentCertificateProgress() {
                 ) : (
                   <div className="space-y-3">
                     {certificates.map((certificate) => (
+                      // Prefer per-certificate status map; fallback to legacy single result field.
+                      (() => {
+                        const statusFromMap =
+                          student.certificateResults?.[certificate.id]?.status;
+                        const statusFromLegacy =
+                          student.certificateResult?.certificateId === certificate.id
+                            ? student.certificateResult?.status
+                            : null;
+                        const status =
+                          statusFromMap ||
+                          statusFromLegacy ||
+                          (Array.isArray(student.certificateIds) &&
+                          student.certificateIds.includes(certificate.id)
+                            ? "enrolled"
+                            : "-");
+
+                        return (
                       <div
                         key={certificate.id}
-                        className="grid grid-cols-[2fr_1.5fr_1fr_1fr] gap-4 rounded-xl bg-gray-100 px-4 py-3"
+                        className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] gap-4 rounded-xl bg-gray-100 px-4 py-3"
                       >
                         <p className="font-medium text-gray-900">{certificate.name || "-"}</p>
                         <p className="text-gray-800">{certificate.platform || "-"}</p>
+                        <p className="text-gray-800 capitalize">{status}</p>
                         <p className="text-gray-800">{student.progress || "0%"}</p>
                         <p className="text-gray-800">{student.exams || "0 / 0"}</p>
                       </div>
+                        );
+                      })()
                     ))}
                   </div>
                 )}

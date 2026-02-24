@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Sidebar from "../../components/layout/Sidebar";
 import { Pencil } from "lucide-react";
 import { certifications as defaultCertifications } from "../../data/certifications";
 import AddCertificateModal from "../../components/superadmin/AddCertificateModal";
 import EnrollProjectCodeModal from "../../components/superadmin/EnrollProjectCodeModal";
+import DeclareResultModal from "../../components/superadmin/DeclareResultModal";
 import { getAllCertificates } from "../../../services/certificateService";
-import { getAllProjectCodes } from "../../../services/projectCodeService";
+import { getAllProjectCodesFromStudents } from "../../../services/studentService";
 
 export default function CertificateConfig() {
   const [certifications, setCertifications] = useState([]);
@@ -15,6 +16,9 @@ export default function CertificateConfig() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showDeclareResultModal, setShowDeclareResultModal] = useState(false);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
   const [filters, setFilters] = useState({
     platform: "All",
     level: "All",
@@ -31,7 +35,7 @@ export default function CertificateConfig() {
       setError("");
       const [certificateData, projectCodeData] = await Promise.all([
         getAllCertificates(),
-        getAllProjectCodes(),
+        getAllProjectCodesFromStudents(),
       ]);
 
       if (certificateData.length === 0) {
@@ -44,18 +48,28 @@ export default function CertificateConfig() {
       } else {
         setCertifications(certificateData);
       }
+      console.log("Project codes loaded:", projectCodeData);
       setProjectCodes(projectCodeData);
     } catch (fetchError) {
       setError("Failed to load certificate data");
-      console.error(fetchError);
+      console.error("Fetch error:", fetchError);
     } finally {
       setLoading(false);
     }
   };
 
-  const platforms = ["All", ...new Set(certifications.map((c) => c.platform).filter(Boolean))];
-  const levels = ["All", ...new Set(certifications.map((c) => c.level).filter(Boolean))];
-  const domains = ["All", ...new Set(certifications.map((c) => c.domain).filter(Boolean))];
+  const platforms = [
+    "All",
+    ...new Set(certifications.map((c) => c.platform).filter(Boolean)),
+  ];
+  const levels = [
+    "All",
+    ...new Set(certifications.map((c) => c.level).filter(Boolean)),
+  ];
+  const domains = [
+    "All",
+    ...new Set(certifications.map((c) => c.domain).filter(Boolean)),
+  ];
 
   const filteredCertifications = useMemo(() => {
     return certifications.filter((c) => {
@@ -72,7 +86,9 @@ export default function CertificateConfig() {
 
   const handleCertificateAdded = async () => {
     await fetchData();
-    setSuccessMessage("Certificate created. Click the certificate row to assign project codes.");
+    setSuccessMessage(
+      "Certificate created. Click the certificate row to assign project codes.",
+    );
     setTimeout(() => setSuccessMessage(""), 3000);
   };
 
@@ -101,9 +117,15 @@ export default function CertificateConfig() {
           </button>
         </div>
 
-        {error && <div className="rounded-md bg-red-100 px-4 py-2 text-sm text-red-700">{error}</div>}
+        {error && (
+          <div className="rounded-md bg-red-100 px-4 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         {successMessage && (
-          <div className="rounded-md bg-green-100 px-4 py-2 text-sm text-green-700">{successMessage}</div>
+          <div className="rounded-md bg-green-100 px-4 py-2 text-sm text-green-700">
+            {successMessage}
+          </div>
         )}
 
         {/* Filters */}
@@ -183,24 +205,13 @@ export default function CertificateConfig() {
             </p>
           )}
           {filteredCertifications.length === 0 && (
-            <p className="text-center text-gray-600">
-              No certifications found
-            </p>
+            <p className="text-center text-gray-600">No certifications found</p>
           )}
 
           {filteredCertifications.map((c) => (
             <div
               key={c.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelectedCertificate(c)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setSelectedCertificate(c);
-                }
-              }}
-              className="bg-white rounded-xl px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+              className="bg-white rounded-xl px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 relative"
             >
               <div className="grid grid-cols-6 w-full text-sm">
                 <span>{c.domain}</span>
@@ -208,7 +219,9 @@ export default function CertificateConfig() {
                 <span>{c.platform}</span>
                 <span>{c.examCode}</span>
                 <span>{c.level}</span>
-                <span className="text-right">{c.enrolledCount ?? 0} students</span>
+                <span className="text-right">
+                  {c.enrolledCount ?? 0} students
+                </span>
               </div>
 
               <button
@@ -216,12 +229,39 @@ export default function CertificateConfig() {
                 onClick={(event) => {
                   event.stopPropagation();
                   setSelectedCertificate(c);
+                  setOpenMenuId(openMenuId === c.id ? null : c.id);
                 }}
                 className="ml-4 text-gray-600 hover:text-black"
-                title="Enroll project code"
+                title="Manage certificate"
               >
                 <Pencil size={16} />
               </button>
+              {openMenuId === c.id && (
+                <div className="absolute right-12 mt-1 w-48 bg-white rounded-xl shadow-lg border z-20">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedCertificate(c);
+                      setShowDeclareResultModal(true);
+                      setOpenMenuId(null);
+                    }}
+                    className="w-full px-4 py-2 text-sm text-left hover:bg-blue-50 border-b"
+                  >
+                    📋 Declare Result
+                  </button>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedCertificate(c);
+                      setShowEnrollModal(true);
+                      setOpenMenuId(null);
+                    }}
+                    className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
+                  >
+                    🏆 Enroll Project Code
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -234,12 +274,34 @@ export default function CertificateConfig() {
         />
       )}
 
-      {selectedCertificate && (
+      {showEnrollModal && selectedCertificate && (
         <EnrollProjectCodeModal
           certificate={selectedCertificate}
           projectCodes={projectCodes}
-          onClose={() => setSelectedCertificate(null)}
-          onEnrolled={handleEnrolled}
+          onClose={() => {
+            setShowEnrollModal(false);
+            setSelectedCertificate(null);
+          }}
+          onEnrolled={() => {
+            setShowEnrollModal(false);
+            setSelectedCertificate(null);
+            handleEnrolled();
+          }}
+        />
+      )}
+
+      {showDeclareResultModal && selectedCertificate && (
+        <DeclareResultModal
+          certificate={selectedCertificate}
+          onClose={() => {
+            setShowDeclareResultModal(false);
+            setSelectedCertificate(null);
+          }}
+          onResultDeclared={() => {
+            setShowDeclareResultModal(false);
+            setSelectedCertificate(null);
+            fetchData();
+          }}
         />
       )}
     </div>

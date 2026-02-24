@@ -2,13 +2,13 @@ import { useState } from "react";
 import { read, utils } from "xlsx";
 import { db } from "../../firebase/config";
 import {
-  collection,
   writeBatch,
   doc,
   serverTimestamp,
-  collectionGroup,
 } from "firebase/firestore";
 import { codeToDocId } from "../../utils/projectCodeUtils";
+import { getStudentsByProject } from "../../../services/studentService";
+import { createStudentAuthUser } from "../../../services/userService";
 
 const REQUIRED_HEADERS = [
   "SN",
@@ -36,7 +36,7 @@ const REQUIRED_HEADERS = [
   "OVERALL MARKS %",
 ];
 
-export function normalizeHeader(h) {
+function normalizeHeader(h) {
   return String(h || "")
     .trim()
     .replace(/\s+/g, " ")
@@ -58,12 +58,15 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [missingColumns, setMissingColumns] = useState([]);
+  const [duplicateSummary, setDuplicateSummary] = useState(null);
+  const [skippedEntries, setSkippedEntries] = useState([]);
   const [success, setSuccess] = useState(null);
 
   const handleFile = async (file) => {
     setLoading(true);
     setError(null);
     setMissingColumns([]);
+    setSkippedEntries([]);
     setSuccess(null);
 
     try {
@@ -118,7 +121,8 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
           headerMap[normalizeHeader(orig)] = orig;
         });
 
-        await processRows(
+        // Duplicate detection before importing (email & phone)
+        await detectAndImport({
           rows,
           headerMap,
           projectCode,
@@ -126,7 +130,7 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
           setLoading,
           setError,
           setSuccess,
-        );
+        });
         return;
       }
 
@@ -163,8 +167,150 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
         return obj;
       });
 
+      await detectAndImport({
+        rows: dataRows,
+        headerMap,
+        projectCode,
+        onStudentAdded,
+        setLoading,
+        setError,
+        setSuccess,
+      });
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "Failed to process file");
+      setLoading(false);
+    }
+  };
+
+  // Helper: detect duplicates within excel and against DB, then import non-duplicates
+  async function detectAndImport({
+    rows,
+    headerMap,
+    projectCode,
+    onStudentAdded,
+    setLoading,
+    setError,
+    setSuccess,
+  }) {
+    try {
+      // Primary keys
+      const emailKey = headerMap[normalizeHeader("EMAIL ID")] || "EMAIL ID";
+      const phoneKey = headerMap[normalizeHeader("MOBILE NO.")] || "MOBILE NO.";
+      const nameKey =
+        headerMap[normalizeHeader("FULL NAME OF STUDENT")] ||
+        "FULL NAME OF STUDENT";
+      const snKey = headerMap[normalizeHeader("SN")] || "SN";
+
+      // Fetch existing students for this project
+      let existingEmails = new Set();
+      let existingPhones = new Set();
+      try {
+        if (projectCode) {
+          const existing = await getStudentsByProject(projectCode);
+          existing.forEach((s) => {
+            const e = s.OFFICIAL_DETAILS?.["EMAIL ID"] || s.email || null;
+            const p = s.OFFICIAL_DETAILS?.["MOBILE NO."] || s.phone || null;
+            if (e) existingEmails.add(String(e).trim().toLowerCase());
+            if (p) existingPhones.add(String(p).trim());
+          });
+        }
+      } catch (err) {
+        console.warn(
+          "Failed to fetch existing students for duplicate check:",
+          err,
+        );
+      }
+
+      const seenEmails = new Set();
+      const seenPhones = new Set();
+      const duplicatesExcel = [];
+      const duplicatesDB = [];
+      const missingMobileOrEmail = [];
+      const toImportRows = [];
+
+      rows.forEach((row, idx) => {
+        const rawEmail = row[emailKey];
+        const rawPhone = row[phoneKey];
+        const rawName = row[nameKey];
+        const rawSn = row[snKey];
+        const emailVal = rawEmail
+          ? String(rawEmail).trim().toLowerCase()
+          : null;
+        const phoneVal = rawPhone ? String(rawPhone).trim() : null;
+        const nameVal = rawName ? String(rawName).trim() : "-";
+        const snVal = rawSn ? String(rawSn).trim() : "-";
+
+        if (!emailVal || !phoneVal) {
+          missingMobileOrEmail.push({
+            row: idx + 1,
+            sn: snVal,
+            name: nameVal,
+            missing: `${!emailVal ? "Email" : ""}${!emailVal && !phoneVal ? ", " : ""}${!phoneVal ? "Mobile" : ""}`,
+          });
+          return;
+        }
+
+        let isDup = false;
+        if (emailVal) {
+          if (existingEmails.has(emailVal)) {
+            duplicatesDB.push({ type: "email", value: emailVal, row: idx + 1 });
+            isDup = true;
+          } else if (seenEmails.has(emailVal)) {
+            duplicatesExcel.push({
+              type: "email",
+              value: emailVal,
+              row: idx + 1,
+            });
+            isDup = true;
+          }
+        }
+        if (phoneVal) {
+          if (existingPhones.has(phoneVal)) {
+            duplicatesDB.push({ type: "phone", value: phoneVal, row: idx + 1 });
+            isDup = true;
+          } else if (seenPhones.has(phoneVal)) {
+            duplicatesExcel.push({
+              type: "phone",
+              value: phoneVal,
+              row: idx + 1,
+            });
+            isDup = true;
+          }
+        }
+
+        if (!isDup) {
+          toImportRows.push(row);
+          if (emailVal) seenEmails.add(emailVal);
+          if (phoneVal) seenPhones.add(phoneVal);
+        }
+      });
+
+      setSkippedEntries(missingMobileOrEmail);
+      if (missingMobileOrEmail.length > 0) {
+        const shouldProceed = window.confirm(
+          `${missingMobileOrEmail.length} student entr${missingMobileOrEmail.length > 1 ? "ies are" : "y is"} missing Mobile/Email and will be skipped.\nContinue with remaining entries?`,
+        );
+
+        if (!shouldProceed) {
+          setError("Import cancelled due to missing Mobile/Email entries.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      setDuplicateSummary({
+        totalRows: rows.length,
+        toImport: toImportRows.length,
+        skippedExcel: duplicatesExcel.length,
+        skippedDB: duplicatesDB.length,
+        examplesExcel: duplicatesExcel.slice(0, 10),
+        examplesDB: duplicatesDB.slice(0, 10),
+      });
+
+      // Proceed to import non-duplicates
       await processRows(
-        dataRows,
+        toImportRows,
         headerMap,
         projectCode,
         onStudentAdded,
@@ -174,10 +320,10 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
       );
     } catch (e) {
       console.error(e);
-      setError(e.message || "Failed to process file");
+      setError(e.message || "Failed during duplicate detection/import");
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="w-full space-y-3">
@@ -216,6 +362,69 @@ export function ExcelStudentImport({ projectCode, onStudentAdded }) {
         </div>
       )}
 
+      {/* Duplicate Summary Display */}
+      {duplicateSummary && (
+        <div className="rounded-lg bg-yellow-50 border border-yellow-300 p-4">
+          <p className="font-semibold text-yellow-900 mb-2">
+            ⚠️ Duplicate Check
+          </p>
+          <p className="text-sm text-yellow-800 mb-2">
+            Found {duplicateSummary.skippedExcel + duplicateSummary.skippedDB}{" "}
+            possible duplicate(s). {duplicateSummary.toImport} rows will be
+            imported out of {duplicateSummary.totalRows}.
+          </p>
+          {duplicateSummary.examplesExcel.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs font-medium text-yellow-800">
+                Examples - duplicates within Excel:
+              </p>
+              <ul className="text-xs font-mono text-yellow-700">
+                {duplicateSummary.examplesExcel.map((d, i) => (
+                  <li key={i}>
+                    {d.type}: {d.value} (row {d.row})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {duplicateSummary.examplesDB.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-yellow-800">
+                Examples - duplicates in database:
+              </p>
+              <ul className="text-xs font-mono text-yellow-700">
+                {duplicateSummary.examplesDB.map((d, i) => (
+                  <li key={i}>
+                    {d.type}: {d.value} (row {d.row})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {skippedEntries.length > 0 && (
+        <div className="rounded-lg bg-orange-50 border border-orange-300 p-4">
+          <p className="font-semibold text-orange-900 mb-2">
+            Skipped Entries (Missing Mobile/Email): {skippedEntries.length}
+          </p>
+          <ul className="text-xs font-mono text-orange-800 max-h-40 overflow-auto space-y-1">
+            {skippedEntries.slice(0, 25).map((entry, idx) => (
+              <li key={`${entry.row}-${idx}`}>
+                row {entry.row} | SN: {entry.sn} | Name: {entry.name} | Missing:{" "}
+                {entry.missing}
+              </li>
+            ))}
+          </ul>
+          {skippedEntries.length > 25 && (
+            <p className="mt-2 text-xs text-orange-700">
+              Showing first 25 skipped entries.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Error Message */}
       {error && missingColumns.length === 0 && (
         <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
@@ -247,9 +456,25 @@ async function processRows(
 
     let successCount = 0;
     let failedCount = 0;
+    let authCreatedCount = 0;
+    const authFailures = [];
 
     // Convert project code to document ID (replace "/" with "-")
     const projectDocId = codeToDocId(projectCode);
+    const collegeCode = String(projectCode || "").split("/")[0] || "";
+    const authCandidates = [];
+
+    // Ensure parent project document contains project/college linkage metadata.
+    const projectDocRef = doc(db, "students", projectDocId);
+    batch.set(
+      projectDocRef,
+      {
+        projectCode,
+        collegeCode,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     for (const row of rows) {
       try {
@@ -316,9 +541,11 @@ async function processRows(
 
         // Store original project code in data (with slashes)
         if (projectCode) docBody.projectCode = projectCode;
+        docBody.collegeCode = collegeCode;
 
         const idVal = official && official.SN ? String(official.SN) : undefined;
         docBody.createdAt = serverTimestamp();
+        docBody.updatedAt = serverTimestamp();
 
         // New path: students/{projectCodeWithHyphens}/students_list/{sn}
         const studentDocRef = doc(
@@ -330,6 +557,21 @@ async function processRows(
         );
         batch.set(studentDocRef, docBody, { merge: true });
 
+        authCandidates.push({
+          studentId: idVal || "",
+          name:
+            official && official["FULL NAME OF STUDENT"]
+              ? String(official["FULL NAME OF STUDENT"])
+              : "",
+          email:
+            official && official["EMAIL ID"]
+              ? String(official["EMAIL ID"]).trim().toLowerCase()
+              : "",
+          mobile: official ? official["MOBILE NO."] : "",
+          projectCode,
+          collegeCode,
+        });
+
         successCount++;
       } catch (e) {
         console.error("Failed to import row", e);
@@ -338,15 +580,42 @@ async function processRows(
     }
 
     await batch.commit();
+
+    for (const student of authCandidates) {
+      try {
+        await createStudentAuthUser(student);
+        authCreatedCount++;
+      } catch (authError) {
+        authFailures.push({
+          studentId: student.studentId || "-",
+          email: student.email || "-",
+          reason: authError?.message || "Auth creation failed",
+        });
+      }
+    }
+
     setSuccess(
       `✅ Imported ${successCount} students${
         failedCount ? `, ${failedCount} failed` : ""
+      }. Auth created for ${authCreatedCount}${
+        authFailures.length ? `, ${authFailures.length} auth failed` : ""
       }`,
     );
-    onStudentAdded?.();
+
+    if (authFailures.length > 0) {
+      setError(
+        `Auth creation failed for: ${authFailures
+          .slice(0, 10)
+          .map((item) => `${item.studentId} (${item.email})`)
+          .join(", ")}${authFailures.length > 10 ? " ..." : ""}`,
+      );
+    }
+
+    onStudentAdded?.(true);
   } catch (e) {
     console.error(e);
     setError(e.message || "Failed to process rows");
+    onStudentAdded?.(false);
   } finally {
     setLoading(false);
   }

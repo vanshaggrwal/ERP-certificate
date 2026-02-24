@@ -11,6 +11,7 @@ import {
   writeBatch,
   setDoc,
   addDoc,
+  arrayUnion,
 } from "firebase/firestore";
 
 const PROJECT_CODES_COLLECTION = "projectCodes";
@@ -30,6 +31,24 @@ export const addProjectCode = async (projectData) => {
       createdAt: new Date(),
     });
     console.log("Project code added with ID:", docRef.id);
+
+    // Also add this project code to the corresponding college document
+    try {
+      const collegeDocId =
+        projectData.collegeId || projectData.collegeCode || projectData.college;
+      if (collegeDocId) {
+        const collegeRef = doc(db, "college", String(collegeDocId));
+        await updateDoc(collegeRef, {
+          project_codes: arrayUnion(projectData.code),
+        });
+      }
+    } catch (err) {
+      // Non-fatal: log and continue
+      console.error(
+        "Failed to update college document with project code:",
+        err,
+      );
+    }
     return docRef.id;
   } catch (error) {
     console.error("Error adding project code:", error);
@@ -40,7 +59,9 @@ export const addProjectCode = async (projectData) => {
 // Get all project codes
 export const getAllProjectCodes = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, PROJECT_CODES_COLLECTION));
+    const querySnapshot = await getDocs(
+      collection(db, PROJECT_CODES_COLLECTION),
+    );
     const projectCodes = [];
     querySnapshot.forEach((doc) => {
       projectCodes.push({
@@ -60,7 +81,7 @@ export const getProjectCodesByCollege = async (collegeId) => {
   try {
     const q = query(
       collection(db, PROJECT_CODES_COLLECTION),
-      where("collegeId", "==", collegeId)
+      where("collegeId", "==", collegeId),
     );
     const querySnapshot = await getDocs(q);
     const projectCodes = [];

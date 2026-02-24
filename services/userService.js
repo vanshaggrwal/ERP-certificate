@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 const USERS_COLLECTION = "users";
+const STUDENT_USERS_COLLECTION = "student_users";
 const SECONDARY_APP_NAME = "secondary-user-creation";
 
 const getSecondaryAuth = () => {
@@ -21,6 +22,74 @@ const getSecondaryAuth = () => {
   const secondaryApp =
     existingApp || initializeApp(firebaseConfig, SECONDARY_APP_NAME);
   return getAuth(secondaryApp);
+};
+
+export const formatMobilePassword = (mobileValue) => {
+  const digitsOnly = String(mobileValue || "").replace(/\D/g, "");
+  if (!digitsOnly) {
+    return "";
+  }
+  return digitsOnly;
+};
+
+export const createStudentAuthUser = async (studentData) => {
+  const email = String(studentData?.email || "")
+    .trim()
+    .toLowerCase();
+  const name = String(studentData?.name || "").trim();
+  const mobilePassword = formatMobilePassword(studentData?.mobile);
+  const projectCode = String(studentData?.projectCode || "").trim();
+  const collegeCode =
+    String(studentData?.collegeCode || "").trim() ||
+    String(projectCode || "").split("/")[0] ||
+    "";
+  const studentId = String(studentData?.studentId || "").trim();
+
+  if (!email) {
+    throw new Error("Student email is required for auth creation");
+  }
+
+  if (!mobilePassword) {
+    throw new Error("Valid mobile number is required for auth password creation");
+  }
+
+  if (mobilePassword.length < 6) {
+    throw new Error("Mobile number must have at least 6 digits for auth password");
+  }
+
+  const secondaryAuth = getSecondaryAuth();
+
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+      secondaryAuth,
+      email,
+      mobilePassword,
+    );
+
+    const uid = userCredential.user.uid;
+
+    await setDoc(
+      doc(db, STUDENT_USERS_COLLECTION, uid),
+      {
+        uid,
+        email,
+        name,
+        role: "student",
+        projectCode,
+        collegeCode,
+        studentId,
+        createdAt: new Date(),
+      },
+      { merge: true },
+    );
+
+    return { uid, email };
+  } catch (error) {
+    console.error("Error creating student auth user:", error);
+    throw error;
+  } finally {
+    await signOut(secondaryAuth).catch(() => null);
+  }
 };
 
 // Create a college admin user in both Firebase Auth and Firestore
@@ -91,7 +160,6 @@ export const createSuperAdmin = async (adminData) => {
 // Get user by email
 export const getUserByEmail = async (email) => {
   try {
-    const usersRef = collection(db, USERS_COLLECTION);
     // Note: Firestore doesn't have a direct "where email" query in basic setup
     // This is a limitation - you might want to add an index or use a different approach
     console.log("Getting user by email:", email);

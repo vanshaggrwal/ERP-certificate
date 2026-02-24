@@ -8,12 +8,12 @@ import {
   deleteDoc,
   query,
   where,
-  addDoc,
+  setDoc,
   writeBatch,
   increment,
   collectionGroup,
 } from "firebase/firestore";
-import { codeToDocId } from "../src/utils/projectCodeUtils";
+import { codeToDocId, docIdToCode } from "../src/utils/projectCodeUtils";
 
 const STUDENTS_COLLECTION = "students";
 const CERTIFICATES_COLLECTION = "certificates";
@@ -49,7 +49,42 @@ export const addStudent = async (studentData) => {
       )
       .filter(Boolean);
 
-    const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), {
+    const certificateResults = certificateIds.reduce((acc, certificateId, index) => {
+      const certificateName = certificateNames[index] || "";
+      if (!certificateName) {
+        return acc;
+      }
+
+      acc[certificateId] = {
+        certificateId,
+        certificateName,
+        status: "enrolled",
+        updatedAt: new Date(),
+      };
+      return acc;
+    }, {});
+
+    const projectDocId = codeToDocId(studentData.projectId);
+    const projectRef = doc(db, STUDENTS_COLLECTION, projectDocId);
+    await setDoc(
+      projectRef,
+      {
+        projectCode: studentData.projectId,
+        collegeCode: studentData.collegeCode || "",
+        updatedAt: new Date(),
+      },
+      { merge: true },
+    );
+
+    const studentRef = doc(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      "students_list",
+      String(studentData.id),
+    );
+
+    await setDoc(studentRef, {
       id: studentData.id,
       name: studentData.name,
       gender: studentData.gender,
@@ -65,6 +100,7 @@ export const addStudent = async (studentData) => {
       enrolledCertificates: certificateNames.filter(Boolean),
       certificate: certificateNames[0] || studentData.certificate || "",
       certificateStatus: certificateIds.length > 0 ? "enrolled" : "",
+      certificateResults,
       progress: studentData.progress || "0%",
       exams: studentData.exams || "0 / 0",
       tenthPercentage: studentData.tenthPercentage,
@@ -74,6 +110,21 @@ export const addStudent = async (studentData) => {
       email: studentData.email,
       phone: studentData.phone,
       createdAt: new Date(),
+      updatedAt: new Date(),
+      OFFICIAL_DETAILS: {
+        SN: String(studentData.id || ""),
+        "FULL NAME OF STUDENT": studentData.name || "",
+        "EMAIL ID": studentData.email || "",
+        "MOBILE NO.": studentData.phone || "",
+        "BIRTH DATE": studentData.dob || "",
+        GENDER: studentData.gender || "",
+      },
+      TENTH_DETAILS: {
+        "10th OVERALL MARKS %": studentData.tenthPercentage,
+      },
+      TWELFTH_DETAILS: {
+        "12th OVERALL MARKS %": studentData.twelfthPercentage,
+      },
     });
 
     if (certificateIds.length > 0) {
@@ -86,8 +137,8 @@ export const addStudent = async (studentData) => {
       await batch.commit();
     }
 
-    console.log("Student added with ID:", docRef.id);
-    return docRef.id;
+    console.log("Student added with ID:", studentData.id);
+    return String(studentData.id);
   } catch (error) {
     console.error("Error adding student:", error);
     throw error;
@@ -189,6 +240,37 @@ export const deleteStudent = async (projectCode, id) => {
     return true;
   } catch (error) {
     console.error("Error deleting student:", error);
+    throw error;
+  }
+};
+
+// Get all unique project codes from students collection
+export const getAllProjectCodesFromStudents = async () => {
+  try {
+    // Use collectionGroup to get all students_list subcollections
+    const allStudentsQuery = collectionGroup(db, "students_list");
+    const querySnapshot = await getDocs(allStudentsQuery);
+    const projectCodesSet = new Set();
+
+    querySnapshot.forEach((studentDoc) => {
+      const pathSegments = studentDoc.ref.path.split("/");
+      if (pathSegments.length >= 2) {
+        const projectDocId = pathSegments[1];
+        const projectCode = docIdToCode(projectDocId);
+        projectCodesSet.add(projectCode);
+      }
+    });
+
+    const projectCodes = Array.from(projectCodesSet)
+      .map((code) => ({
+        code,
+        docId: codeToDocId(code),
+      }))
+      .sort((a, b) => a.code.localeCompare(b.code));
+
+    return projectCodes;
+  } catch (error) {
+    console.error("Error getting project codes from students:", error);
     throw error;
   }
 };

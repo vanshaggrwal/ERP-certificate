@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { addStudent } from "../../../services/studentService";
+import { createStudentAuthUser } from "../../../services/userService";
 import { parseProjectCode } from "../../utils/projectCodeParser";
 
 export default function AddStudentModal({ projectCode, onClose, onStudentAdded }) {
@@ -28,6 +29,7 @@ export default function AddStudentModal({ projectCode, onClose, onStudentAdded }
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [skippedEntries, setSkippedEntries] = useState([]);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -43,10 +45,6 @@ export default function AddStudentModal({ projectCode, onClose, onStudentAdded }
     }
     if (!form.gender) {
       setError("Gender is required");
-      return false;
-    }
-    if (!form.dob) {
-      setError("Date of birth is required");
       return false;
     }
     if (!form.tenthPercentage) {
@@ -65,10 +63,6 @@ export default function AddStudentModal({ projectCode, onClose, onStudentAdded }
       setError("Current semester is required");
       return false;
     }
-    if (!form.email.trim()) {
-      setError("Email is required");
-      return false;
-    }
     setError(null);
     return true;
   };
@@ -78,7 +72,32 @@ export default function AddStudentModal({ projectCode, onClose, onStudentAdded }
     if (!validateForm()) return;
 
     setLoading(true);
+    setSkippedEntries([]);
     try {
+      const missingFields = [];
+      if (!form.phone.trim()) missingFields.push("Mobile");
+      if (!form.email.trim()) missingFields.push("Email");
+
+      if (missingFields.length > 0) {
+        const skippedEntry = {
+          rollNo: form.id || "-",
+          name: form.name || "-",
+          missing: missingFields.join(", "),
+        };
+        setSkippedEntries([skippedEntry]);
+        const shouldProceed = window.confirm(
+          `1 student entry is missing ${missingFields.join(" and ")} and will be skipped.\nProceed without inserting this entry?`,
+        );
+
+        if (!shouldProceed) {
+          setError("Student insertion cancelled.");
+          return;
+        }
+
+        setError("Student skipped due to missing Mobile/Email.");
+        return;
+      }
+
       await addStudent({
         id: form.id,
         name: form.name,
@@ -100,7 +119,30 @@ export default function AddStudentModal({ projectCode, onClose, onStudentAdded }
         email: form.email,
         phone: form.phone,
       });
+
+      let authError = null;
+      try {
+        await createStudentAuthUser({
+          studentId: form.id,
+          name: form.name,
+          email: form.email,
+          mobile: form.phone,
+          projectCode,
+          collegeCode: form.collegeCode,
+        });
+      } catch (e) {
+        authError = e;
+      }
+
       onStudentAdded();
+
+      if (authError) {
+        setError(
+          `Student added to DB, but auth/student_users creation failed: ${authError.message || "Unknown error"}`,
+        );
+        return;
+      }
+
       onClose();
     } catch (error) {
       setError("Failed to add student");
@@ -128,6 +170,17 @@ export default function AddStudentModal({ projectCode, onClose, onStudentAdded }
         {error && (
           <div className="mb-4 rounded-lg bg-red-100 p-2.5 text-sm text-red-700">
             {error}
+          </div>
+        )}
+        {skippedEntries.length > 0 && (
+          <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
+            <p className="font-semibold">Skipped Entries</p>
+            {skippedEntries.map((entry, index) => (
+              <p key={`${entry.rollNo}-${index}`}>
+                Roll No: {entry.rollNo} | Name: {entry.name} | Missing:{" "}
+                {entry.missing}
+              </p>
+            ))}
           </div>
         )}
 

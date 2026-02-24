@@ -19,10 +19,14 @@ export default function EnrollProjectCodeModal({
   const [resultMessage, setResultMessage] = useState("");
   const [assignedProjectCodes, setAssignedProjectCodes] = useState([]);
 
+  console.log("EnrollProjectCodeModal received projectCodes:", projectCodes);
+
   useEffect(() => {
     const loadAssignedProjectCodes = async () => {
       try {
-        const assignedCodes = await getAssignedProjectCodesForCertificate(certificate.id);
+        const assignedCodes = await getAssignedProjectCodesForCertificate(
+          certificate.id,
+        );
         setAssignedProjectCodes(assignedCodes);
       } catch (loadError) {
         console.error(loadError);
@@ -36,7 +40,9 @@ export default function EnrollProjectCodeModal({
     const query = search.trim().toLowerCase();
     if (!query) return projectCodes;
     return projectCodes.filter((projectCode) =>
-      String(projectCode.code || "").toLowerCase().includes(query),
+      String(projectCode.code || "")
+        .toLowerCase()
+        .includes(query),
     );
   }, [projectCodes, search]);
 
@@ -56,7 +62,9 @@ export default function EnrollProjectCodeModal({
         projectCode: selectedProjectCode,
       });
 
-      const assignedCodes = await getAssignedProjectCodesForCertificate(certificate.id);
+      const assignedCodes = await getAssignedProjectCodesForCertificate(
+        certificate.id,
+      );
       setAssignedProjectCodes(assignedCodes);
 
       setResultMessage(
@@ -82,7 +90,9 @@ export default function EnrollProjectCodeModal({
         projectCode,
       });
 
-      const assignedCodes = await getAssignedProjectCodesForCertificate(certificate.id);
+      const assignedCodes = await getAssignedProjectCodesForCertificate(
+        certificate.id,
+      );
       setAssignedProjectCodes(assignedCodes);
       setResultMessage(
         `${result.unenrolledCount} students unenrolled from ${projectCode}.`,
@@ -108,7 +118,9 @@ export default function EnrollProjectCodeModal({
           ✕
         </button>
 
-        <h2 className="mb-1 text-xl font-semibold text-gray-900">Enroll Project Code</h2>
+        <h2 className="mb-1 text-xl font-semibold text-gray-900">
+          Enroll Project Code
+        </h2>
         <p className="mb-4 text-sm text-gray-600">
           Certificate: <span className="font-medium">{certificate.name}</span>
         </p>
@@ -120,7 +132,9 @@ export default function EnrollProjectCodeModal({
             </label>
             <div className="min-h-10 rounded-md border border-gray-300 bg-gray-50 px-2 py-2">
               {assignedProjectCodes.length === 0 ? (
-                <p className="text-xs text-gray-500">No project codes assigned yet.</p>
+                <p className="text-xs text-gray-500">
+                  No project codes assigned yet.
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {assignedProjectCodes.map((code) => (
@@ -168,7 +182,10 @@ export default function EnrollProjectCodeModal({
             >
               <option value="">Select project code</option>
               {filteredProjectCodes.map((projectCode) => (
-                <option key={projectCode.id} value={projectCode.code}>
+                <option
+                  key={projectCode.docId || projectCode.id}
+                  value={projectCode.code}
+                >
                   {projectCode.code}
                 </option>
               ))}
@@ -177,7 +194,9 @@ export default function EnrollProjectCodeModal({
         </div>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        {resultMessage && <p className="mt-3 text-sm text-green-700">{resultMessage}</p>}
+        {resultMessage && (
+          <p className="mt-3 text-sm text-green-700">{resultMessage}</p>
+        )}
 
         <div className="mt-5 flex justify-end gap-3">
           <button

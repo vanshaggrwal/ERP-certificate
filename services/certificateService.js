@@ -8,12 +8,10 @@ import {
   getDocs,
   query,
   setDoc,
-  updateDoc,
   where,
   writeBatch,
   arrayUnion,
   increment,
-  collectionGroup,
 } from "firebase/firestore";
 import { codeToDocId } from "../src/utils/projectCodeUtils";
 
@@ -139,11 +137,26 @@ export const enrollProjectCodeIntoCertificate = async ({
       }
 
       newlyEnrolledCount += 1;
+      const existingCertificateResults =
+        studentData.certificateResults &&
+        typeof studentData.certificateResults === "object"
+          ? studentData.certificateResults
+          : {};
+
       batch.update(studentDoc.ref, {
         certificate: certificateName,
         certificateIds: arrayUnion(certificateId),
         certificateStatus: "enrolled",
         enrolledCertificates: arrayUnion(certificateName),
+        certificateResults: {
+          ...existingCertificateResults,
+          [certificateId]: {
+            certificateId,
+            certificateName,
+            status: "enrolled",
+            updatedAt: new Date(),
+          },
+        },
         updatedAt: new Date(),
       });
     });
@@ -195,6 +208,7 @@ export const unassignProjectCodeFromCertificate = async ({
   certificateId,
   certificateName,
   projectCode,
+  preserveStudentCertificateData = false,
 }) => {
   try {
     const enrollmentDocId = `${certificateId}__${encodeURIComponent(projectCode)}`;
@@ -230,6 +244,10 @@ export const unassignProjectCodeFromCertificate = async ({
 
       unenrolledCount += 1;
 
+      if (preserveStudentCertificateData) {
+        return;
+      }
+
       const updatedCertificateIds = certificateIds.filter(
         (id) => id !== certificateId,
       );
@@ -242,9 +260,19 @@ export const unassignProjectCodeFromCertificate = async ({
         (name) => name !== certificateName,
       );
 
+      const existingCertificateResults =
+        studentData.certificateResults &&
+        typeof studentData.certificateResults === "object"
+          ? studentData.certificateResults
+          : {};
+
+      const updatedCertificateResults = { ...existingCertificateResults };
+      delete updatedCertificateResults[certificateId];
+
       const updatePayload = {
         certificateIds: updatedCertificateIds,
         enrolledCertificates: updatedEnrolledCertificates,
+        certificateResults: updatedCertificateResults,
         updatedAt: new Date(),
       };
 
@@ -254,6 +282,13 @@ export const unassignProjectCodeFromCertificate = async ({
 
       if (updatedCertificateIds.length === 0) {
         updatePayload.certificateStatus = "";
+      }
+
+      if (
+        studentData.certificateResult &&
+        studentData.certificateResult.certificateId === certificateId
+      ) {
+        updatePayload.certificateResult = null;
       }
 
       batch.update(studentDoc.ref, updatePayload);

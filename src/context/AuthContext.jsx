@@ -16,10 +16,14 @@ export function AuthProvider({ children }) {
       if (firebaseUser) {
         setUser(firebaseUser);
 
-        // Fetch role and profile fields from Firestore users/{uid}
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+        // Fetch role/profile from users; fallback to student_users.
+        let snap = await getDoc(doc(db, "users", firebaseUser.uid));
+        if (!snap.exists()) {
+          snap = await getDoc(doc(db, "student_users", firebaseUser.uid));
+        }
+
         if (snap.exists()) {
-          const userData = snap.data();
+          const userData = snap.data() || {};
           setRole(userData.role || null);
           setProfile(userData);
         } else {

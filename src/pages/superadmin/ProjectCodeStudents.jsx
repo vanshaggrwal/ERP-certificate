@@ -264,9 +264,15 @@ export default function ProjectCodeStudents() {
             </h2>
             <ExcelStudentImport
               projectCode={projectCode?.code || projectId}
-              onStudentAdded={() => {
-                fetchData();
-                setShowImportModal(false);
+              onStudentAdded={(success) => {
+                // Only close modal and refresh when import succeeded.
+                if (success) {
+                  setShowImportModal(false);
+                  setTimeout(() => fetchData(), 700);
+                } else {
+                  // keep modal open so user can see error messages
+                  // optionally focus/scroll to error — no-op for now
+                }
               }}
             />
           </div>

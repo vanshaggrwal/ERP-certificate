@@ -29,14 +29,21 @@ export default function Login() {
 
       const uid = userCredential.user.uid;
 
-      // 🔥 Fetch role from Firestore
+      // Fetch role from users; fallback to student_users.
+      let role = null;
       const userDoc = await getDoc(doc(db, "users", uid));
-
-      if (!userDoc.exists()) {
-        throw new Error("User role not found in database");
+      if (userDoc.exists()) {
+        role = userDoc.data().role || null;
+      } else {
+        const studentUserDoc = await getDoc(doc(db, "student_users", uid));
+        if (studentUserDoc.exists()) {
+          role = studentUserDoc.data().role || null;
+        }
       }
 
-      const role = userDoc.data().role;
+      if (!role) {
+        throw new Error("User role not found in users/student_users");
+      }
       localStorage.setItem("role", role); // store role in localStorage for later use
 
       // 🚀 Redirect based on role
