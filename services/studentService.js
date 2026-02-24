@@ -11,11 +11,14 @@ import {
   addDoc,
   writeBatch,
   increment,
+  collectionGroup,
 } from "firebase/firestore";
+import { codeToDocId } from "../src/utils/projectCodeUtils";
 
 const STUDENTS_COLLECTION = "students";
 const CERTIFICATES_COLLECTION = "certificates";
-const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION = "certificateProjectEnrollments";
+const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION =
+  "certificateProjectEnrollments";
 
 // Add a student to Firestore
 export const addStudent = async (studentData) => {
@@ -41,7 +44,9 @@ export const addStudent = async (studentData) => {
     );
 
     const certificateNames = certificateDocs
-      .map((certificateDoc) => (certificateDoc.exists() ? certificateDoc.data().name : ""))
+      .map((certificateDoc) =>
+        certificateDoc.exists() ? certificateDoc.data().name : "",
+      )
       .filter(Boolean);
 
     const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), {
@@ -92,7 +97,9 @@ export const addStudent = async (studentData) => {
 // Get all students
 export const getAllStudents = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, STUDENTS_COLLECTION));
+    // Use collectionGroup to query all students_list subcollections
+    const allStudentsQuery = collectionGroup(db, "students_list");
+    const querySnapshot = await getDocs(allStudentsQuery);
     const students = [];
     querySnapshot.forEach((doc) => {
       students.push({
@@ -110,15 +117,19 @@ export const getAllStudents = async () => {
 // Get students by project ID
 export const getStudentsByProject = async (projectId) => {
   try {
-    const q = query(
-      collection(db, STUDENTS_COLLECTION),
-      where("projectId", "==", projectId)
+    const projectDocId = codeToDocId(projectId);
+    const studentsList = collection(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      "students_list",
     );
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(studentsList);
     const students = [];
     querySnapshot.forEach((doc) => {
       students.push({
         id: doc.id,
+        projectCode: projectId,
         ...doc.data(),
       });
     });
@@ -130,9 +141,16 @@ export const getStudentsByProject = async (projectId) => {
 };
 
 // Update student
-export const updateStudent = async (id, updateData) => {
+export const updateStudent = async (projectCode, id, updateData) => {
   try {
-    const docRef = doc(db, STUDENTS_COLLECTION, id);
+    const projectDocId = codeToDocId(projectCode);
+    const docRef = doc(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      "students_list",
+      id,
+    );
     await updateDoc(docRef, updateData);
     console.log("Student updated:", id);
     return true;
@@ -143,9 +161,12 @@ export const updateStudent = async (id, updateData) => {
 };
 
 // Delete student
-export const deleteStudent = async (id) => {
+export const deleteStudent = async (projectCode, id) => {
   try {
-    await deleteDoc(doc(db, STUDENTS_COLLECTION, id));
+    const projectDocId = codeToDocId(projectCode);
+    await deleteDoc(
+      doc(db, STUDENTS_COLLECTION, projectDocId, "students_list", id),
+    );
     console.log("Student deleted:", id);
     return true;
   } catch (error) {

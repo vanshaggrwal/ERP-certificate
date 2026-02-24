@@ -25,9 +25,9 @@ export default function CollegeProjectCodes() {
 
   const filterOptions = useMemo(() => {
     const uniqueSorted = (items) =>
-      [...new Set(items.filter(Boolean).map((item) => String(item).trim()))].sort(
-        (a, b) => a.localeCompare(b),
-      );
+      [
+        ...new Set(items.filter(Boolean).map((item) => String(item).trim())),
+      ].sort((a, b) => a.localeCompare(b));
 
     return {
       codes: uniqueSorted(projectCodes.map((item) => item.code)),
@@ -46,7 +46,7 @@ export default function CollegeProjectCodes() {
       setLoading(true);
       const [projectCodesData, collegeData] = await Promise.all([
         getProjectCodesByCollege(collegeId),
-        getCollegeByCode(collegeId)
+        getCollegeByCode(collegeId),
       ]);
       setProjectCodes(projectCodesData);
       setCollege(collegeData);
@@ -76,10 +76,14 @@ export default function CollegeProjectCodes() {
   };
 
   const filteredProjectCodes = projectCodes.filter((code) => {
-    const matchesCode = !filters.code || String(code.code || "") === filters.code;
-    const matchesCourse = !filters.course || String(code.course || "") === filters.course;
-    const matchesYear = !filters.year || String(code.year || "") === filters.year;
-    const matchesType = !filters.type || String(code.type || "") === filters.type;
+    const matchesCode =
+      !filters.code || String(code.code || "") === filters.code;
+    const matchesCourse =
+      !filters.course || String(code.course || "") === filters.course;
+    const matchesYear =
+      !filters.year || String(code.year || "") === filters.year;
+    const matchesType =
+      !filters.type || String(code.type || "") === filters.type;
 
     return matchesCode && matchesCourse && matchesYear && matchesType;
   });
@@ -127,12 +131,6 @@ export default function CollegeProjectCodes() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => alert("Bulk add students will be enabled soon.")}
-                className="rounded-lg bg-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-400"
-              >
-                + Bulk Add Students
-              </button>
-              <button
                 onClick={() => setShowAddProjectModal(true)}
                 className="rounded-lg bg-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-400"
               >
@@ -166,7 +164,9 @@ export default function CollegeProjectCodes() {
                   Course
                   <select
                     value={filters.course}
-                    onChange={(e) => handleFilterChange("course", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("course", e.target.value)
+                    }
                     className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-sm outline-none"
                   >
                     <option value="">All courses</option>
@@ -236,7 +236,9 @@ export default function CollegeProjectCodes() {
                     openStudentList(row.id);
                   }}
                   className={`grid w-full grid-cols-[2fr_1.2fr_1fr_48px] items-center gap-4 rounded-xl bg-gray-100 px-5 py-3 text-left text-lg text-gray-900 transition hover:bg-white sm:text-base ${
-                    selectedProjectCode === row.id ? "ring-2 ring-[#003B7A]/20" : ""
+                    selectedProjectCode === row.id
+                      ? "ring-2 ring-[#003B7A]/20"
+                      : ""
                   }`}
                 >
                   <p className="font-medium">{row.code}</p>
@@ -255,7 +257,6 @@ export default function CollegeProjectCodes() {
               </div>
             )}
           </section>
-
         </div>
       </div>
 

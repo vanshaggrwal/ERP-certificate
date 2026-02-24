@@ -12,11 +12,14 @@ import {
   writeBatch,
   arrayUnion,
   increment,
+  collectionGroup,
 } from "firebase/firestore";
+import { codeToDocId } from "../src/utils/projectCodeUtils";
 
 const CERTIFICATES_COLLECTION = "certificates";
 const STUDENTS_COLLECTION = "students";
-const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION = "certificateProjectEnrollments";
+const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION =
+  "certificateProjectEnrollments";
 
 export const getAllCertificates = async () => {
   try {
@@ -43,15 +46,18 @@ export const getAllCertificates = async () => {
 
 export const createCertificateAndEnrollStudents = async (certificateData) => {
   try {
-    const certificateRef = await addDoc(collection(db, CERTIFICATES_COLLECTION), {
-      domain: certificateData.domain,
-      name: certificateData.name,
-      platform: certificateData.platform,
-      examCode: certificateData.examCode,
-      level: certificateData.level,
-      enrolledCount: 0,
-      createdAt: new Date(),
-    });
+    const certificateRef = await addDoc(
+      collection(db, CERTIFICATES_COLLECTION),
+      {
+        domain: certificateData.domain,
+        name: certificateData.name,
+        platform: certificateData.platform,
+        examCode: certificateData.examCode,
+        level: certificateData.level,
+        enrolledCount: 0,
+        createdAt: new Date(),
+      },
+    );
 
     return {
       id: certificateRef.id,
@@ -81,11 +87,14 @@ export const enrollProjectCodeIntoCertificate = async ({
       { merge: true },
     );
 
-    const studentsQuery = query(
-      collection(db, STUDENTS_COLLECTION),
-      where("projectId", "==", projectCode),
+    const projectDocId = codeToDocId(projectCode);
+    const studentsList = collection(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      "students_list",
     );
-    const studentsSnapshot = await getDocs(studentsQuery);
+    const studentsSnapshot = await getDocs(studentsList);
 
     if (studentsSnapshot.empty) {
       return { newlyEnrolledCount: 0, matchedStudentsCount: 0 };
@@ -105,7 +114,7 @@ export const enrollProjectCodeIntoCertificate = async ({
       }
 
       newlyEnrolledCount += 1;
-      batch.update(doc(db, STUDENTS_COLLECTION, studentDoc.id), {
+      batch.update(studentDoc.ref, {
         certificate: certificateName,
         certificateIds: arrayUnion(certificateId),
         certificateStatus: "enrolled",
@@ -149,7 +158,10 @@ export const getAssignedProjectCodesForCertificate = async (certificateId) => {
 
     return [...new Set(projectCodes)].sort((a, b) => a.localeCompare(b));
   } catch (error) {
-    console.error("Error getting assigned project codes for certificate:", error);
+    console.error(
+      "Error getting assigned project codes for certificate:",
+      error,
+    );
     throw error;
   }
 };
@@ -162,14 +174,19 @@ export const unassignProjectCodeFromCertificate = async ({
   try {
     const enrollmentDocId = `${certificateId}__${encodeURIComponent(projectCode)}`;
 
-    const studentsQuery = query(
-      collection(db, STUDENTS_COLLECTION),
-      where("projectId", "==", projectCode),
+    const projectDocId = codeToDocId(projectCode);
+    const studentsList = collection(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      "students_list",
     );
-    const studentsSnapshot = await getDocs(studentsQuery);
+    const studentsSnapshot = await getDocs(studentsList);
 
     if (studentsSnapshot.empty) {
-      await deleteDoc(doc(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION, enrollmentDocId));
+      await deleteDoc(
+        doc(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION, enrollmentDocId),
+      );
       return { unenrolledCount: 0 };
     }
 
@@ -188,8 +205,12 @@ export const unassignProjectCodeFromCertificate = async ({
 
       unenrolledCount += 1;
 
-      const updatedCertificateIds = certificateIds.filter((id) => id !== certificateId);
-      const enrolledCertificates = Array.isArray(studentData.enrolledCertificates)
+      const updatedCertificateIds = certificateIds.filter(
+        (id) => id !== certificateId,
+      );
+      const enrolledCertificates = Array.isArray(
+        studentData.enrolledCertificates,
+      )
         ? studentData.enrolledCertificates
         : [];
       const updatedEnrolledCertificates = enrolledCertificates.filter(
@@ -210,7 +231,7 @@ export const unassignProjectCodeFromCertificate = async ({
         updatePayload.certificateStatus = "";
       }
 
-      batch.update(doc(db, STUDENTS_COLLECTION, studentDoc.id), updatePayload);
+      batch.update(studentDoc.ref, updatePayload);
     });
 
     if (unenrolledCount > 0) {
@@ -220,7 +241,9 @@ export const unassignProjectCodeFromCertificate = async ({
     }
 
     await batch.commit();
-    await deleteDoc(doc(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION, enrollmentDocId));
+    await deleteDoc(
+      doc(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION, enrollmentDocId),
+    );
 
     return { unenrolledCount };
   } catch (error) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { addCollege } from "../../../services/collegeService";
+import { addCollege, updateCollege } from "../../../services/collegeService";
 import { createCollegeAdmin } from "../../../services/userService";
 
 export default function AddEditCollegeModal({
@@ -40,15 +40,7 @@ export default function AddEditCollegeModal({
   // Validate form fields
   const validateForm = () => {
     if (isEdit) {
-      // For edit mode, only college fields are required
-      if (!form.name.trim()) {
-        setError("College name is required");
-        return false;
-      }
-      if (!form.code.trim()) {
-        setError("College code is required");
-        return false;
-      }
+      // For edit mode, only logo URL is required
       if (!form.logoUrl.trim()) {
         setError("Logo URL is required");
         return false;
@@ -89,15 +81,22 @@ export default function AddEditCollegeModal({
 
     setLoading(true);
     try {
-      // 1. Create college in Firestore
-      await addCollege({
-        college_name: form.name,
-        college_code: form.code,
-        college_logo: form.logoUrl,
-      });
+      if (isEdit) {
+        // In edit mode, only update the logo URL
+        await updateCollege(college.collegeCode, {
+          college_logo: form.logoUrl,
+        });
 
-      // 2. Create college admin if in add mode
-      if (!isEdit) {
+        alert("College updated successfully!");
+      } else {
+        // 1. Create college in Firestore
+        await addCollege({
+          college_name: form.name,
+          college_code: form.code,
+          college_logo: form.logoUrl,
+        });
+
+        // 2. Create college admin
         await createCollegeAdmin(
           {
             name: form.adminName,
@@ -106,6 +105,8 @@ export default function AddEditCollegeModal({
           },
           form.code,
         );
+
+        alert("College and admin created successfully!");
       }
 
       // Call the callback to refresh the colleges list
@@ -122,10 +123,9 @@ export default function AddEditCollegeModal({
         adminPassword: "",
       });
 
-      alert("College and admin created successfully!");
       onClose();
     } catch (err) {
-      console.error("Error creating college or admin:", err);
+      console.error("Error creating or updating college:", err);
 
       // Handle specific Firebase Auth errors
       if (err.code === "auth/email-already-in-use") {
@@ -139,7 +139,7 @@ export default function AddEditCollegeModal({
       } else if (err.code === "auth/invalid-email") {
         setError("Invalid email address. Please check and try again.");
       } else {
-        setError(err.message || "Failed to create college or admin");
+        setError(err.message || "Failed to process request");
       }
     } finally {
       setLoading(false);
@@ -163,25 +163,30 @@ export default function AddEditCollegeModal({
               {error}
             </div>
           )}
-          <div>
-            <label className="text-sm font-medium">College Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
-            />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">College Code</label>
-            <input
-              name="code"
-              value={form.code}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
-            />
-          </div>
+          {!isEdit && (
+            <>
+              <div>
+                <label className="text-sm font-medium">College Name</label>
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="w-full border rounded-lg px-4 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">College Code</label>
+                <input
+                  name="code"
+                  value={form.code}
+                  onChange={handleChange}
+                  className="w-full border rounded-lg px-4 py-2"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label className="text-sm font-medium">Logo URL</label>

@@ -5,6 +5,24 @@ import { getStudentsByProject } from "../../../services/studentService";
 import { Pencil, RotateCcw } from "lucide-react";
 import Sidebar from "../../components/layout/Sidebar";
 import AddStudentModal from "../../components/superadmin/AddStudentModal";
+import { ExcelStudentImport } from "../../components/superadmin/ExcelStudentImport";
+
+// Helper function to extract display fields from nested student data
+function extractStudentDisplayData(student) {
+  return {
+    id: student.id,
+    name: student.OFFICIAL_DETAILS?.["FULL NAME OF STUDENT"] || "-",
+    dob: student.OFFICIAL_DETAILS?.["BIRTH DATE"] || "-",
+    tenthPercentage: student.TENTH_DETAILS?.["10th OVERALL MARKS %"] || "-",
+    twelfthOrDiplomaPercentage:
+      student.TWELFTH_DETAILS?.["12th OVERALL MARKS %"] ||
+      student.DIPLOMA_DETAILS?.["DIPLOMA OVERALL MARKS %"] ||
+      "-",
+    ugPercentage:
+      student.GRADUATION_DETAILS?.["GRADUATION OVERALL MARKS %"] || "-",
+    pgPercentage: student.POST_GRADUATION_DETAILS?.["OVERALL MARKS %"] || "-",
+  };
+}
 
 export default function ProjectCodeStudents() {
   const { projectId } = useParams();
@@ -13,6 +31,7 @@ export default function ProjectCodeStudents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [filters, setFilters] = useState({
     rollNo: "",
     name: "",
@@ -77,14 +96,16 @@ export default function ProjectCodeStudents() {
     });
   };
 
-  const filteredStudents = students.filter((student) => {
-    const rollNo = String(student.id || "");
-    const name = String(student.name || "");
-    return (
-      rollNo.toLowerCase().includes(filters.rollNo.toLowerCase()) &&
-      name.toLowerCase().includes(filters.name.toLowerCase())
-    );
-  });
+  const filteredStudents = students
+    .map(extractStudentDisplayData)
+    .filter((student) => {
+      const rollNo = String(student.id || "");
+      const name = String(student.name || "");
+      return (
+        rollNo.toLowerCase().includes(filters.rollNo.toLowerCase()) &&
+        name.toLowerCase().includes(filters.name.toLowerCase())
+      );
+    });
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -98,7 +119,7 @@ export default function ProjectCodeStudents() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => alert("Bulk add students will be enabled soon.")}
+                onClick={() => setShowImportModal(true)}
                 className="rounded-lg bg-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-400"
               >
                 + Bulk Add Students
@@ -124,7 +145,9 @@ export default function ProjectCodeStudents() {
                   <input
                     type="text"
                     value={filters.rollNo}
-                    onChange={(e) => handleFilterChange("rollNo", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("rollNo", e.target.value)
+                    }
                     className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-base outline-none sm:text-sm"
                   />
                 </label>
@@ -167,13 +190,13 @@ export default function ProjectCodeStudents() {
                   key={student.id}
                   className="grid grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] items-center gap-3 rounded-xl bg-gray-100 px-4 py-3 text-base text-gray-900 lg:text-sm"
                 >
-                  <p>{student.name || "-"}</p>
-                  <p>{student.id || "-"}</p>
-                  <p>{student.dob || "-"}</p>
-                  <p>{student.tenthPercentage ?? "-"}</p>
-                  <p>{student.twelfthPercentage ?? "-"}</p>
-                  <p>{student.ugPercentage ?? "-"}</p>
-                  <p>{student.pgPercentage ?? "-"}</p>
+                  <p>{student.name}</p>
+                  <p>{student.id}</p>
+                  <p>{student.dob}</p>
+                  <p>{student.tenthPercentage}</p>
+                  <p>{student.twelfthOrDiplomaPercentage}</p>
+                  <p>{student.ugPercentage}</p>
+                  <p>{student.pgPercentage}</p>
                   <span className="justify-self-end text-gray-600">
                     <Pencil size={18} />
                   </span>
@@ -196,6 +219,33 @@ export default function ProjectCodeStudents() {
           onClose={() => setShowAddStudentModal(false)}
           onStudentAdded={fetchData}
         />
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowImportModal(false)}
+          />
+          <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-10">
+            <button
+              onClick={() => setShowImportModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-semibold mb-4 pr-6">
+              Bulk Import Students from Excel
+            </h2>
+            <ExcelStudentImport
+              projectCode={projectCode?.code || projectId}
+              onStudentAdded={() => {
+                fetchData();
+                setShowImportModal(false);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

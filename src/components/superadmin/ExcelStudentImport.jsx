@@ -1,0 +1,353 @@
+import { useState } from "react";
+import { read, utils } from "xlsx";
+import { db } from "../../firebase/config";
+import {
+  collection,
+  writeBatch,
+  doc,
+  serverTimestamp,
+  collectionGroup,
+} from "firebase/firestore";
+import { codeToDocId } from "../../utils/projectCodeUtils";
+
+const REQUIRED_HEADERS = [
+  "SN",
+  "FULL NAME OF STUDENT",
+  "EMAIL ID",
+  "MOBILE NO.",
+  "BIRTH DATE",
+  "GENDER",
+  "HOMETOWN",
+  "10th PASSING YR",
+  "10th OVERALL MARKS %",
+  "12th PASSING YR",
+  "12th OVERALL MARKS %",
+  "DIPLOMA COURSE",
+  "DIPLOMA SPECIALIZATION",
+  "DIPLOMA PASSING YR",
+  "DIPLOMA OVERALL MARKS %",
+  "GRADUATION COURSE",
+  "GRADUATION SPECIALIZATION",
+  "GRADUATION PASSING YR",
+  "GRADUATION OVERALL MARKS %",
+  "COURSE",
+  "SPECIALIZATION",
+  "PASSING YEAR",
+  "OVERALL MARKS %",
+];
+
+export function normalizeHeader(h) {
+  return String(h || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function buildNested(obj, keyMap) {
+  const out = {};
+  Object.entries(keyMap).forEach(([outKey, inKey]) => {
+    const val = obj[inKey];
+    if (val !== undefined && val !== null && String(val).trim() !== "") {
+      out[outKey] = typeof val === "string" ? val.trim() : val;
+    }
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+export function ExcelStudentImport({ projectCode, onStudentAdded }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [missingColumns, setMissingColumns] = useState([]);
+  const [success, setSuccess] = useState(null);
+
+  const handleFile = async (file) => {
+    setLoading(true);
+    setError(null);
+    setMissingColumns([]);
+    setSuccess(null);
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = read(data);
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+
+      // Read as raw arrays first to detect header row
+      const rowsArr = utils.sheet_to_json(sheet, { header: 1, defval: null });
+      if (!rowsArr || rowsArr.length === 0) {
+        throw new Error("Excel is empty");
+      }
+
+      // Find best header row: choose row which matches the most REQUIRED_HEADERS
+      let bestIdx = -1;
+      let bestMatches = 0;
+      for (let i = 0; i < Math.min(rowsArr.length, 5); i++) {
+        const row = rowsArr[i] || [];
+        const normalized = row.map((c) => normalizeHeader(c));
+        const matches = REQUIRED_HEADERS.filter((h) =>
+          normalized.includes(normalizeHeader(h)),
+        ).length;
+        if (matches > bestMatches) {
+          bestMatches = matches;
+          bestIdx = i;
+        }
+      }
+
+      // If no header row found in first 5 rows, try using first row as before
+      if (bestIdx === -1 || bestMatches === 0) {
+        const rows = utils.sheet_to_json(sheet, { defval: null });
+        if (!rows || rows.length === 0) {
+          throw new Error("Excel is empty");
+        }
+
+        const headers = Object.keys(rows[0]).map(normalizeHeader);
+        const missing = REQUIRED_HEADERS.filter(
+          (h) => !headers.includes(normalizeHeader(h)),
+        );
+
+        if (missing.length > 0) {
+          setMissingColumns(missing);
+          setError(`Found ${missing.length} missing required column(s).`);
+          setLoading(false);
+          return;
+        }
+
+        // build headerMap
+        const headerMap = {};
+        Object.keys(rows[0]).forEach((orig) => {
+          headerMap[normalizeHeader(orig)] = orig;
+        });
+
+        await processRows(
+          rows,
+          headerMap,
+          projectCode,
+          onStudentAdded,
+          setLoading,
+          setError,
+          setSuccess,
+        );
+        return;
+      }
+
+      // Build header map from detected header row
+      const headerCells = rowsArr[bestIdx].map((c) =>
+        c === null ? "" : String(c),
+      );
+      const headerMap = {};
+      headerCells.forEach((orig) => {
+        headerMap[normalizeHeader(orig)] = orig;
+      });
+
+      // Check for missing columns
+      const missing = REQUIRED_HEADERS.filter(
+        (h) =>
+          !Object.keys(headerMap).some(
+            (key) => normalizeHeader(key) === normalizeHeader(h),
+          ),
+      );
+
+      if (missing.length > 0) {
+        setMissingColumns(missing);
+        setError(`Found ${missing.length} missing required column(s).`);
+        setLoading(false);
+        return;
+      }
+
+      // Build data rows starting after header row
+      const dataRows = rowsArr.slice(bestIdx + 1).map((r) => {
+        const obj = {};
+        headerCells.forEach((h, i) => {
+          obj[h] = r[i] === undefined ? null : r[i];
+        });
+        return obj;
+      });
+
+      await processRows(
+        dataRows,
+        headerMap,
+        projectCode,
+        onStudentAdded,
+        setLoading,
+        setError,
+        setSuccess,
+      );
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "Failed to process file");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-3">
+      <div className="flex items-center gap-3">
+        <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg bg-blue-500 hover:bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition">
+          <span>{loading ? "⏳ Processing..." : "📁 Select Excel File"}</span>
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={(e) =>
+              e.target.files?.[0] && handleFile(e.target.files[0])
+            }
+            className="hidden"
+            disabled={loading}
+          />
+        </label>
+      </div>
+
+      {/* Missing Columns Display */}
+      {missingColumns.length > 0 && (
+        <div className="rounded-lg bg-red-50 border border-red-300 p-4">
+          <p className="font-semibold text-red-900 mb-3">
+            ⚠️ Missing {missingColumns.length} Required Column(s):
+          </p>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {missingColumns.map((col, idx) => (
+              <li
+                key={idx}
+                className="text-red-700 text-sm flex items-start gap-2"
+              >
+                <span className="text-red-500 font-bold">•</span>
+                <span className="font-mono">{col}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && missingColumns.length === 0 && (
+        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+          ❌ {error}
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="text-green-700 text-sm bg-green-50 p-3 rounded-lg border border-green-200">
+          ✅ {success}
+        </div>
+      )}
+    </div>
+  );
+}
+
+async function processRows(
+  rows,
+  headerMap,
+  projectCode,
+  onStudentAdded,
+  setLoading,
+  setError,
+  setSuccess,
+) {
+  try {
+    const batch = writeBatch(db);
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    // Convert project code to document ID (replace "/" with "-")
+    const projectDocId = codeToDocId(projectCode);
+
+    for (const row of rows) {
+      try {
+        const official = buildNested(row, {
+          SN: headerMap["SN"] || "SN",
+          "FULL NAME OF STUDENT":
+            headerMap["FULL NAME OF STUDENT"] || "FULL NAME OF STUDENT",
+          "EMAIL ID": headerMap["EMAIL ID"] || "EMAIL ID",
+          "MOBILE NO.": headerMap["MOBILE NO."] || "MOBILE NO.",
+          "BIRTH DATE": headerMap["BIRTH DATE"] || "BIRTH DATE",
+          GENDER: headerMap["GENDER"] || "GENDER",
+          HOMETOWN: headerMap["HOMETOWN"] || "HOMETOWN",
+        });
+
+        const tenth = buildNested(row, {
+          "10th PASSING YR": headerMap["10th PASSING YR"] || "10th PASSING YR",
+          "10th OVERALL MARKS %":
+            headerMap["10th OVERALL MARKS %"] || "10th OVERALL MARKS %",
+        });
+
+        const twelfth = buildNested(row, {
+          "12th PASSING YR": headerMap["12th PASSING YR"] || "12th PASSING YR",
+          "12th OVERALL MARKS %":
+            headerMap["12th OVERALL MARKS %"] || "12th OVERALL MARKS %",
+        });
+
+        const diploma = buildNested(row, {
+          "DIPLOMA COURSE": headerMap["DIPLOMA COURSE"] || "DIPLOMA COURSE",
+          "DIPLOMA SPECIALIZATION":
+            headerMap["DIPLOMA SPECIALIZATION"] || "DIPLOMA SPECIALIZATION",
+          "DIPLOMA PASSING YR":
+            headerMap["DIPLOMA PASSING YR"] || "DIPLOMA PASSING YR",
+          "DIPLOMA OVERALL MARKS %":
+            headerMap["DIPLOMA OVERALL MARKS %"] || "DIPLOMA OVERALL MARKS %",
+        });
+
+        const graduation = buildNested(row, {
+          "GRADUATION COURSE":
+            headerMap["GRADUATION COURSE"] || "GRADUATION COURSE",
+          "GRADUATION SPECIALIZATION":
+            headerMap["GRADUATION SPECIALIZATION"] ||
+            "GRADUATION SPECIALIZATION",
+          "GRADUATION PASSING YR":
+            headerMap["GRADUATION PASSING YR"] || "GRADUATION PASSING YR",
+          "GRADUATION OVERALL MARKS %":
+            headerMap["GRADUATION OVERALL MARKS %"] ||
+            "GRADUATION OVERALL MARKS %",
+        });
+
+        const postGrad = buildNested(row, {
+          COURSE: headerMap["COURSE"] || "COURSE",
+          SPECIALIZATION: headerMap["SPECIALIZATION"] || "SPECIALIZATION",
+          "PASSING YEAR": headerMap["PASSING YEAR"] || "PASSING YEAR",
+          "OVERALL MARKS %": headerMap["OVERALL MARKS %"] || "OVERALL MARKS %",
+        });
+
+        const docBody = {};
+        if (official) docBody.OFFICIAL_DETAILS = official;
+        if (tenth) docBody.TENTH_DETAILS = tenth;
+        if (twelfth) docBody.TWELFTH_DETAILS = twelfth;
+        if (diploma) docBody.DIPLOMA_DETAILS = diploma;
+        if (graduation) docBody.GRADUATION_DETAILS = graduation;
+        if (postGrad) docBody.POST_GRADUATION_DETAILS = postGrad;
+
+        // Store original project code in data (with slashes)
+        if (projectCode) docBody.projectCode = projectCode;
+
+        const idVal = official && official.SN ? String(official.SN) : undefined;
+        docBody.createdAt = serverTimestamp();
+
+        // New path: students/{projectCodeWithHyphens}/students_list/{sn}
+        const studentDocRef = doc(
+          db,
+          "students",
+          projectDocId,
+          "students_list",
+          idVal,
+        );
+        batch.set(studentDocRef, docBody, { merge: true });
+
+        successCount++;
+      } catch (e) {
+        console.error("Failed to import row", e);
+        failedCount++;
+      }
+    }
+
+    await batch.commit();
+    setSuccess(
+      `✅ Imported ${successCount} students${
+        failedCount ? `, ${failedCount} failed` : ""
+      }`,
+    );
+    onStudentAdded?.();
+  } catch (e) {
+    console.error(e);
+    setError(e.message || "Failed to process rows");
+  } finally {
+    setLoading(false);
+  }
+}
