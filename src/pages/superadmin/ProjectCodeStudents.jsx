@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getProjectCodeById } from "../../../services/projectCodeService";
 import { getStudentsByProject } from "../../../services/studentService";
@@ -25,6 +25,7 @@ function extractStudentDisplayData(student) {
 }
 
 export default function ProjectCodeStudents() {
+  const navigate = useNavigate();
   const { projectId } = useParams();
   const [projectCode, setProjectCode] = useState(null);
   const [students, setStudents] = useState([]);
@@ -113,9 +114,22 @@ export default function ProjectCodeStudents() {
       <div className="flex-1 px-5 py-8 lg:px-6">
         <div className="w-full space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <h1 className="text-[3rem] font-medium leading-none text-gray-900 sm:text-[2.2rem]">
-              Students List
-            </h1>
+            <div>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    `/superadmin/colleges/${projectCode?.collegeId || ""}/project-codes`,
+                  )
+                }
+                className="mb-2 rounded-md bg-[#0B2A4A] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0f355b]"
+              >
+                ← Back to Project Codes
+              </button>
+              <h1 className="text-[3rem] font-medium leading-none text-gray-900 sm:text-[2.2rem]">
+                Students List
+              </h1>
+            </div>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -187,16 +201,27 @@ export default function ProjectCodeStudents() {
             <div className="space-y-3">
               {filteredStudents.map((student) => (
                 <div
-                  key={student.id}
+                  key={student.docId || student.id}
                   className="grid grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] items-center gap-3 rounded-xl bg-gray-100 px-4 py-3 text-base text-gray-900 lg:text-sm"
                 >
-                  <p>{student.name}</p>
-                  <p>{student.id}</p>
-                  <p>{student.dob}</p>
-                  <p>{student.tenthPercentage}</p>
-                  <p>{student.twelfthOrDiplomaPercentage}</p>
-                  <p>{student.ugPercentage}</p>
-                  <p>{student.pgPercentage}</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      student.docId &&
+                      navigate(
+                        `/superadmin/students/${student.docId}/certificate-progress`,
+                      )
+                    }
+                    className="justify-self-start text-left font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                  >
+                    {student.name || "-"}
+                  </button>
+                  <p>{student.id || "-"}</p>
+                  <p>{student.dob || "-"}</p>
+                  <p>{student.tenthPercentage ?? "-"}</p>
+                  <p>{student.twelfthOrDiplomaPercentage ?? "-"}</p>
+                  <p>{student.ugPercentage ?? "-"}</p>
+                  <p>{student.pgPercentage ?? "-"}</p>
                   <span className="justify-self-end text-gray-600">
                     <Pencil size={18} />
                   </span>
