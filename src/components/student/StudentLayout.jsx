@@ -1,10 +1,12 @@
 import { useState } from "react";
 import StudentSidebar from "./StudentSidebar";
 import StudentNavbar from "./StudentNavbar";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 export default function StudentLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const hideNavbar = location.pathname === "/student/profile";
 
   return (
     <div className="relative flex h-screen bg-gray-100 overflow-hidden">
@@ -24,7 +26,7 @@ export default function StudentLayout() {
 
       {/* MAIN CONTENT */}
       <div className="flex h-full min-w-0 w-full flex-1 flex-col">
-        <StudentNavbar onMenuClick={() => setMobileMenuOpen(true)} />
+        {!hideNavbar && <StudentNavbar onMenuClick={() => setMobileMenuOpen(true)} />}
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           <Outlet />

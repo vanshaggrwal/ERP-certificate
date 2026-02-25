@@ -145,13 +145,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7] p-6 text-white shadow-sm">
-        <h2 className="text-2xl font-semibold">Welcome back, {fullName === "-" ? "Student" : fullName}</h2>
-        <p className="mt-1 text-sm text-white/85">
-          Track enrolled certificates and check their status.
-        </p>
-      </section>
-
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Enrolled" value={statusSummary.enrolled} icon={<Award size={18} />} />
         <StatCard label="Passed" value={statusSummary.passed} icon={<BookOpenCheck size={18} />} />
@@ -180,11 +173,10 @@ export default function StudentDashboard() {
                 Loading certificates...
               </div>
             ) : enrolledCertificates.length > 0 ? (
-              enrolledCertificates.map((certificate, index) => (
+              enrolledCertificates.map((certificate) => (
                 <CertificateCard
                   key={certificate.id}
                   certificate={certificate}
-                  index={index}
                 />
               ))
             ) : (
@@ -199,7 +191,7 @@ export default function StudentDashboard() {
       <section className="grid grid-cols-1 gap-6">
         <Panel title="Profile Snapshot">
           <div className="space-y-5">
-            <div className="rounded-2xl bg-gradient-to-r from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7] p-4 text-white">
+            <div className="rounded-2xl bg-[#0B2A4A] p-4 text-white">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/90 text-lg font-bold text-[#0B2A4A]">
@@ -281,14 +273,7 @@ function SnapshotItem({ label, value }) {
   );
 }
 
-function CertificateCard({ certificate, index }) {
-  const bannerVariants = [
-    "from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7]",
-    "from-[#1D5FA8] via-[#0B2A4A] to-[#6BC7A7]",
-    "from-[#0B2A4A] via-[#2E6CB0] to-[#1D5FA8]",
-  ];
-
-  const bannerClass = bannerVariants[index % bannerVariants.length];
+function CertificateCard({ certificate }) {
   const statusLabel = normalizeCertificateStatus(certificate.status || "enrolled");
   const statusBadgeClass =
     statusLabel === "passed"
@@ -299,7 +284,7 @@ function CertificateCard({ certificate, index }) {
 
   return (
     <article className="min-w-[270px] max-w-[290px] flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className={`h-24 bg-gradient-to-r ${bannerClass}`} />
+      <div className="h-24 bg-[#0B2A4A]" />
       <div className="space-y-3 p-4">
         <div>
           <p className="text-xs text-gray-500">{certificate.platform}</p>

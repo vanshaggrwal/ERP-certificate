@@ -2,7 +2,7 @@ export default function CollegeAdminProgressBar({ value }) {
   return (
     <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
       <div
-        className="h-3 bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500"
+        className="h-3 bg-green-500 transition-all duration-500"
         style={{ width: `${value}%` }}
       />
     </div>
