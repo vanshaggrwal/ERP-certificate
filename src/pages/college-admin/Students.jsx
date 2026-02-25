@@ -13,9 +13,44 @@ const normalizeProjectCode = (value) =>
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
 
+const normalizeStatus = (status) => {
+  const value = String(status || "").trim().toLowerCase();
+  if (["passed", "completed", "certified"].includes(value)) return "Passed";
+  if (["failed"].includes(value)) return "Failed";
+  return "Enrolled";
+};
+
+const getCurrentYearFromProjectCode = (projectCode) => {
+  const parts = String(projectCode || "")
+    .split("/")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return parts.length >= 3 ? parts[2] : "";
+};
+
 const toDisplayStudent = (student) => {
   const official = student?.OFFICIAL_DETAILS || {};
-  const graduation = student?.GRADUATION_DETAILS || {};
+  const certificateResults =
+    student?.certificateResults && typeof student.certificateResults === "object"
+      ? Object.values(student.certificateResults)
+      : [];
+
+  const normalizedCertificates = certificateResults
+    .map((result) => ({
+      name: String(result?.certificateName || "").trim(),
+      status: normalizeStatus(result?.status || result?.result || "enrolled"),
+    }))
+    .filter((item) => item.name);
+
+  if (normalizedCertificates.length === 0 && student?.certificate) {
+    normalizedCertificates.push({
+      name: String(student.certificate).trim(),
+      status: normalizeStatus(student?.certificateStatus || "enrolled"),
+    });
+  }
+
+  const projectCode = student?.projectCode || student?.projectId || "-";
+  const currentYearFromCode = getCurrentYearFromProjectCode(projectCode);
 
   return {
     ...student,
@@ -30,17 +65,23 @@ const toDisplayStudent = (student) => {
       official["EMAIL ID"] ||
       official["EMAIL ID."] ||
       "-",
-    admissionYear:
-      student?.admissionYear ||
-      graduation["GRADUATION ADMISSION YR"] ||
-      student?.passingYear ||
-      "-",
-    currentSemester:
-      student?.currentSemester ||
+    currentYear:
+      currentYearFromCode ||
       student?.currentYear ||
+      student?.currentYear ||
+      student?.currentSemester ||
       student?.semesterLabel ||
       "-",
-    projectCode: student?.projectCode || student?.projectId || "-",
+    projectCode,
+    enrolledCertificates:
+      normalizedCertificates.length > 0
+        ? normalizedCertificates.map((item) => item.name).join(", ")
+        : "-",
+    certificateStatusSummary:
+      normalizedCertificates.length > 0
+        ? normalizedCertificates.map((item) => `${item.name}: ${item.status}`).join(" | ")
+        : "-",
+    certificateItems: normalizedCertificates,
   };
 };
 
@@ -181,22 +222,23 @@ export default function Students() {
                 <th className="text-left px-3">Name</th>
                 <th className="text-left px-3">Project Code</th>
                <th className="text-left px-3">Email Id</th>
-                  <th className="text-left px-3">Admission Year</th>
-               <th className="text-left px-3">Current Sem</th>
+               <th className="text-left px-3">Current Year</th>
+               <th className="text-left px-3">Certificates</th>
+               <th className="text-left px-3">Result Status</th>
               </tr>
             </thead>
 
             <tbody>
               {loading && (
                 <tr className="bg-gray-50">
-                  <td className="px-3 py-3 text-sm text-gray-500" colSpan={6}>
+                  <td className="px-3 py-3 text-sm text-gray-500" colSpan={8}>
                     Loading students...
                   </td>
                 </tr>
               )}
               {!loading && students.length === 0 && (
                 <tr className="bg-gray-50">
-                  <td className="px-3 py-3 text-sm text-gray-500" colSpan={6}>
+                  <td className="px-3 py-3 text-sm text-gray-500" colSpan={8}>
                     No students found for your college project codes.
                   </td>
                 </tr>
@@ -211,14 +253,15 @@ export default function Students() {
                   <td className="px-3">{s.name}</td>
                   <td className="px-3 text-blue-600">{s.projectCode || s.projectId || "-"}</td>
                   <td className="px-3">{s.email}</td>
-                   <td className="px-3">{s.admissionYear || "-"}</td>
                   <td className="px-3">
                     <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs">
-                      {s.currentSemester || "-"}
+                      {s.currentYear || "-"}
                     </span>
                   </td>
-
-                  
+                  <td className="px-3">
+                    {s.enrolledCertificates || "-"}
+                  </td>
+                  <td className="px-3">{s.certificateStatusSummary || "-"}</td>
                 </tr>
               ))}
             </tbody>
