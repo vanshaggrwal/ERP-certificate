@@ -274,3 +274,112 @@ export const getAllProjectCodesFromStudents = async () => {
     throw error;
   }
 };
+
+// Get a single student by their email (search across all students_list subcollections)
+export const getStudentByEmail = async (email) => {
+  try {
+    if (!email) return null;
+
+    const normalized = String(email).trim().toLowerCase();
+
+    // Query all students_list documents and perform a case-insensitive match in JS.
+    // This avoids relying on the stored email casing.
+    const allQuery = collectionGroup(db, "students_list");
+    const querySnapshot = await getDocs(allQuery);
+    if (querySnapshot.empty) return null;
+
+    for (const docSnap of querySnapshot.docs) {
+      const data = docSnap.data() || {};
+      const candidate = String(data.email || "").trim().toLowerCase();
+      if (candidate && candidate === normalized) {
+        return {
+          docId: docSnap.id,
+          ...data,
+        };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error getting student by email:", error);
+    throw error;
+  }
+};
+
+// Get a single student by their roll/id (search across all students_list subcollections)
+export const getStudentById = async (studentId) => {
+  try {
+    if (!studentId) return null;
+    const q = query(collectionGroup(db, "students_list"), where("id", "==", String(studentId)));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    const docSnap = querySnapshot.docs[0];
+    return {
+      docId: docSnap.id,
+      ...docSnap.data(),
+    };
+  } catch (error) {
+    console.error("Error getting student by id:", error);
+    throw error;
+  }
+};
+
+// Get a single student by project code + roll/id
+export const getStudentByProjectAndId = async (projectCode, studentId) => {
+  try {
+    if (!projectCode || !studentId) return null;
+    const projectDocId = codeToDocId(String(projectCode));
+    const studentRef = doc(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      "students_list",
+      String(studentId),
+    );
+    const studentSnap = await getDoc(studentRef);
+    if (!studentSnap.exists()) return null;
+    return {
+      docId: studentSnap.id,
+      ...studentSnap.data(),
+    };
+  } catch (error) {
+    console.error("Error getting student by project and id:", error);
+    throw error;
+  }
+};
+
+// Resolve logged-in student's full record using the same auth profile identity.
+export const getStudentForAuthUser = async ({ profile, user } = {}) => {
+  try {
+    const profileProjectCode = String(
+      profile?.projectCode || profile?.projectId || "",
+    ).trim();
+    const profileStudentId = String(
+      profile?.studentId || profile?.id || "",
+    ).trim();
+    const profileEmail = String(profile?.email || user?.email || "").trim();
+
+    if (profileProjectCode && profileStudentId) {
+      const byProjectAndId = await getStudentByProjectAndId(
+        profileProjectCode,
+        profileStudentId,
+      );
+      if (byProjectAndId) return byProjectAndId;
+    }
+
+    if (profileStudentId) {
+      const byId = await getStudentById(profileStudentId);
+      if (byId) return byId;
+    }
+
+    if (profileEmail) {
+      const byEmail = await getStudentByEmail(profileEmail);
+      if (byEmail) return byEmail;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error resolving student for auth user:", error);
+    throw error;
+  }
+};

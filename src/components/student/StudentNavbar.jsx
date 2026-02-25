@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getCollegeByCode } from "../../../services/collegeService";
-import { students } from "../../data/students";
-import { projects } from "../../data/projects";
+import { getStudentForAuthUser } from "../../../services/studentService";
 
 const titleByPath = {
   "/student": "Dashboard",
@@ -21,67 +20,52 @@ export default function StudentNavbar({ onMenuClick }) {
     logo: "",
   });
   const heading = titleByPath[location.pathname] || "Student Portal";
-  const studentName =
-    profile?.name || user?.displayName || user?.email?.split("@")[0] || "Student";
+  const studentName = profile?.name || user?.displayName || user?.email?.split("@")[0] || "Student";
 
-  const enrolledCollegeCode = useMemo(() => {
+  const [enrolledCollegeCode, setEnrolledCollegeCode] = useState(() => {
     const fromProfile = String(profile?.collegeCode || "").trim().toUpperCase();
     if (fromProfile) return fromProfile;
 
     const fromProject = String(profile?.projectId || "").split("/")[0]?.trim().toUpperCase();
     if (fromProject) return fromProject;
 
-    const matchedStudent = students.find(
-      (student) =>
-        String(student.email || "").toLowerCase() ===
-        String(profile?.email || user?.email || "").toLowerCase(),
-    );
-    const fromStudentProject = String(matchedStudent?.projectId || "")
-      .split(/[-/]/)[0]
-      ?.trim()
-      .toUpperCase();
-    if (fromStudentProject) return fromStudentProject;
-
     return "";
-  }, [profile?.collegeCode, profile?.projectId, profile?.email, user?.email]);
+  });
 
   useEffect(() => {
     let mounted = true;
 
     const loadCollege = async () => {
-      if (!enrolledCollegeCode) {
-        if (mounted) {
-          setCollegeInfo({ code: "", name: "", logo: "" });
-        }
-        return;
-      }
-
       try {
+        // If we don't have a college code yet, infer from the logged-in student's full record.
+        if (!enrolledCollegeCode) {
+          const student = await getStudentForAuthUser({ profile, user });
+          if (student && mounted) {
+            const fromStudentProject = String(student.projectId || "").split(/[-/]/)[0]?.trim().toUpperCase();
+            if (fromStudentProject) {
+              setEnrolledCollegeCode(fromStudentProject);
+              return; // next effect run will load college info
+            }
+          }
+        }
+
+        if (!enrolledCollegeCode) {
+          if (mounted) setCollegeInfo({ code: "", name: "", logo: "" });
+          return;
+        }
+
         const college = await getCollegeByCode(enrolledCollegeCode);
         if (!mounted) return;
 
-        const fallbackProject = projects.find(
-          (project) =>
-            String(project.collegeCode || "").toUpperCase() === enrolledCollegeCode,
-        );
-
         setCollegeInfo({
           code: enrolledCollegeCode,
-          name: college?.college_name || fallbackProject?.college || enrolledCollegeCode,
+          name: college?.college_name || enrolledCollegeCode,
           logo: college?.college_logo || "",
         });
       } catch (error) {
         console.error(error);
-        const fallbackProject = projects.find(
-          (project) =>
-            String(project.collegeCode || "").toUpperCase() === enrolledCollegeCode,
-        );
         if (mounted) {
-          setCollegeInfo({
-            code: enrolledCollegeCode,
-            name: fallbackProject?.college || enrolledCollegeCode,
-            logo: "",
-          });
+          setCollegeInfo({ code: enrolledCollegeCode || "", name: enrolledCollegeCode || "College", logo: "" });
         }
       }
     };
@@ -90,7 +74,7 @@ export default function StudentNavbar({ onMenuClick }) {
     return () => {
       mounted = false;
     };
-  }, [enrolledCollegeCode]);
+  }, [enrolledCollegeCode, profile, user]);
 
   const collegeInitials = (collegeInfo.code || "CLG").slice(0, 2);
 

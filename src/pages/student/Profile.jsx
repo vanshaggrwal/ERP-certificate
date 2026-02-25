@@ -1,22 +1,66 @@
-import { students } from "../../data/students";
+import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { getStudentForAuthUser } from "../../../services/studentService";
 
 export default function StudentProfile() {
-  // TEMP: simulate logged-in student
-  const loggedInStudentId = "STU012";
+  const { user, profile } = useAuth();
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const student = students.find((s) => s.id === loggedInStudentId);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getStudentForAuthUser({ profile, user });
+        if (!mounted) return;
+        setStudent(s || null);
+      } catch (error) {
+        console.error("Failed to load student profile:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [profile, user]);
 
-  if (!student) {
-    return <p className="text-gray-500">Profile not found.</p>;
-  }
+  if (loading) return <p className="text-gray-500">Loading...</p>;
+  if (!student) return <p className="text-gray-500">Profile not found.</p>;
 
-  const progressValue = Math.max(
-    0,
-    Math.min(100, Number(String(student.progress || "0").replace("%", "")) || 0),
-  );
+  const officialDetails = student?.OFFICIAL_DETAILS || {};
+  const tenthDetails = student?.TENTH_DETAILS || {};
+  const twelfthDetails = student?.TWELFTH_DETAILS || {};
+  const graduationDetails = student?.GRADUATION_DETAILS || {};
+
+  const fullName = officialDetails["FULL NAME OF STUDENT"] || student?.name || "-";
+  const rollNo = officialDetails.SN || student?.id || "-";
+  const gender = officialDetails.GENDER || student?.gender || "-";
+  const dob = officialDetails["BIRTH DATE"] || student?.dob || "-";
+  const collegeCode =
+    String(student?.collegeCode || "").trim() ||
+    String(student?.projectId || "").split(/[-/]/)[0]?.trim() ||
+    "-";
+  const courseYear = student?.projectId || student?.courseYear || "-";
+
+  const email = officialDetails["EMAIL ID"] || student?.email || "-";
+  const phone = officialDetails["MOBILE NO."] || student?.phone || "-";
+  const passingYear =
+    graduationDetails["GRADUATION PASSING YR"] ||
+    student?.passingYear ||
+    student?.admissionYear ||
+    "-";
+  const currentSemester = student?.currentSemester || "-";
+  const tenthPercentage = student?.tenthPercentage ?? tenthDetails["10th OVERALL MARKS %"] ?? "-";
+  const twelfthPercentage = student?.twelfthPercentage ?? twelfthDetails["12th OVERALL MARKS %"] ?? "-";
+
+  const currentCertificate = student?.certificate || "-";
+  const progress = student?.progress || "0%";
+  const exams = student?.exams || "0 / 0";
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-5">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <section className="rounded-3xl bg-gradient-to-r from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7] p-6 text-white shadow-sm">
         <h1 className="text-2xl font-semibold">Student Profile</h1>
         <p className="mt-1 text-sm text-white/90">Manage your academic and certification details.</p>
@@ -24,49 +68,34 @@ export default function StudentProfile() {
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Basic Information</h2>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <ProfileItem label="Student Name" value={student.name} />
-          <ProfileItem label="Roll No" value={student.id} />
-          <ProfileItem label="Gender" value={student.gender} />
-          <ProfileItem label="Date of Birth" value={student.dob} />
-          <ProfileItem label="College" value="ICEM" />
-          <ProfileItem label="Course / Year" value={student.projectId} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <ProfileItem label="Student Name" value={fullName} />
+          <ProfileItem label="Roll No" value={rollNo} />
+          <ProfileItem label="Gender" value={gender} />
+          <ProfileItem label="Date of Birth" value={dob} />
+          <ProfileItem label="College" value={collegeCode} />
+          <ProfileItem label="Course / Year" value={courseYear} />
         </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Contact & Academic Details</h2>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <ProfileItem label="Email" value={student.email} />
-          <ProfileItem label="Phone" value={student.phone} />
-          <ProfileItem label="Admission Year" value={student.admissionYear} />
-          <ProfileItem label="Current Semester" value={student.currentSemester} />
-          <ProfileItem label="10th Percentage" value={`${student.tenthPercentage}%`} />
-          <ProfileItem label="12th Percentage" value={`${student.twelfthPercentage}%`} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <ProfileItem label="Email" value={email} />
+          <ProfileItem label="Phone" value={phone} />
+          <ProfileItem label="Passing Year" value={passingYear} />
+          <ProfileItem label="Current Semester" value={currentSemester} />
+          <ProfileItem label="10th Percentage" value={tenthPercentage === "-" ? "-" : `${tenthPercentage}%`} />
+          <ProfileItem label="12th Percentage" value={twelfthPercentage === "-" ? "-" : `${twelfthPercentage}%`} />
         </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Certification Progress</h2>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.5fr_1fr_1fr]">
-          <div className="rounded-xl bg-gray-50 p-4">
-            <p className="text-sm text-gray-500">Current Certificate</p>
-            <p className="mt-1 text-base font-semibold text-gray-900">{student.certificate || "-"}</p>
-            <div className="mt-4">
-              <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
-                <span>Completion</span>
-                <span>{student.progress || "0%"}</span>
-              </div>
-              <div className="h-2 rounded-full bg-gray-200">
-                <div
-                  className="h-2 rounded-full bg-[#1D5FA8]"
-                  style={{ width: `${progressValue}%` }}
-                />
-              </div>
-            </div>
-          </div>
-          <ProfileItem label="Progress" value={student.progress || "0%"} />
-          <ProfileItem label="Exams" value={student.exams || "0 / 0"} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <ProfileItem label="Current Certificate" value={currentCertificate} />
+          <ProfileItem label="Progress" value={progress} />
+          <ProfileItem label="Exams" value={exams} />
         </div>
       </section>
     </div>
@@ -77,9 +106,10 @@ export default function StudentProfile() {
 
 function ProfileItem({ label, value }) {
   return (
-    <div className="rounded-xl bg-gray-50 p-4">
+    <div className="rounded-xl bg-gray-100 p-5">
       <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
       <p className="mt-1 text-base font-semibold text-gray-900">{value || "-"}</p>
     </div>
   );
 }
+ 

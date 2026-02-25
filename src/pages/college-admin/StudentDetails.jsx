@@ -1,15 +1,34 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { students } from "../../data/students";
+import { getStudentById } from "../../../services/studentService";
 
 export default function StudentDetails() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const student = students.find((s) => s.id === studentId);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getStudentById(studentId);
+        if (!mounted) return;
+        setStudent(s || null);
+      } catch (error) {
+        console.error("Failed to load student:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [studentId]);
 
-  if (!student) {
-    return <p className="text-gray-500">Student not found.</p>;
-  }
+  if (loading) return <p className="text-gray-500">Loading...</p>;
+  if (!student) return <p className="text-gray-500">Student not found.</p>;
 
   return (
     <div className="max-w-5xl">

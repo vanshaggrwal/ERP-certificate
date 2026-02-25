@@ -17,7 +17,8 @@ import { admins } from "../../data/admins";
 import { certifications } from "../../data/certifications";
 import { colleges } from "../../data/colleges";
 import { projectCodes } from "../../data/projectCodes";
-import { students } from "../../data/students";
+import { useEffect, useState } from "react";
+import { getAllStudents } from "../../../services/studentService";
 
 const SIDEBAR_BLUE = "#0B2A4A";
 const ACCENT_BLUE = "#1D5FA8";
@@ -32,6 +33,25 @@ const parseProgress = (progressValue) => {
 };
 
 export default function Dashboard() {
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getAllStudents();
+        if (!mounted) return;
+        setStudents(s || []);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const totalStudents = students.length;
   const totalColleges = colleges.length;
   const activeColleges = colleges.filter((college) => college.status === "Active").length;

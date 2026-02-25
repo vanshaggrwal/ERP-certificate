@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { projects } from "../../data/projects";
-import { students } from "../../data/students";
 import { certifications } from "../../data/certifications";
+import { getAllStudents } from "../../../services/studentService";
 import {
   BarChart,
   Bar,
@@ -24,6 +24,25 @@ export default function AdminDashboard() {
     const parsed = Number(String(progressValue || "").replace("%", "").trim());
     return Number.isFinite(parsed) ? parsed : 0;
   };
+
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getAllStudents();
+        if (!mounted) return;
+        setStudents(s || []);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [students, projects, certifications]);
 
   const data = useMemo(() => {
     const byCourse = {};

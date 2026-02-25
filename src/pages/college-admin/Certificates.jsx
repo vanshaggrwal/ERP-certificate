@@ -1,5 +1,6 @@
 import { certifications } from "../../data/certifications";
-import { students } from "../../data/students";
+import { useEffect, useState } from "react";
+import { getAllStudents } from "../../../services/studentService";
 
 const parseProgress = (value) => {
   const parsed = Number(String(value || "").replace("%", "").trim());
@@ -7,6 +8,25 @@ const parseProgress = (value) => {
 };
 
 export default function Certificates() {
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getAllStudents();
+        if (!mounted) return;
+        setStudents(s || []);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const certificateRows = certifications.map((certificate) => {
     const enrolledStudents = students.filter((student) =>
       String(student.certificate || "")

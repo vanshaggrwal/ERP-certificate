@@ -10,12 +10,33 @@ import {
   YAxis,
 } from "recharts";
 import { Award, BookOpenCheck, Clock3, Target } from "lucide-react";
-import { students } from "../../data/students";
+import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { getStudentForAuthUser } from "../../../services/studentService";
 import { certifications } from "../../data/certifications";
 
 export default function StudentDashboard() {
-  const currentStudent = students[11] || students[0];
+  const { user, profile } = useAuth();
+  const [currentStudent, setCurrentStudent] = useState(null);
   const recentCertificates = certifications.slice(0, 3);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadStudent = async () => {
+      try {
+        const student = await getStudentForAuthUser({ profile, user });
+        if (!mounted) return;
+        setCurrentStudent(student || null);
+      } catch (error) {
+        console.error("Failed to load student record:", error);
+      }
+    };
+
+    loadStudent();
+    return () => {
+      mounted = false;
+    };
+  }, [profile, user]);
 
   const progressTrend = [
     { month: "Jan", value: 42 },
@@ -30,11 +51,30 @@ export default function StudentDashboard() {
     { name: "Attempted", value: Number(String(currentStudent?.exams || "0 / 0").split("/")[0] || 0) },
     { name: "Remaining", value: Math.max(0, Number(String(currentStudent?.exams || "0 / 0").split("/")[1] || 0) - Number(String(currentStudent?.exams || "0 / 0").split("/")[0] || 0)) },
   ];
+  const officialDetails = currentStudent?.OFFICIAL_DETAILS || {};
+  const tenthDetails = currentStudent?.TENTH_DETAILS || {};
+  const twelfthDetails = currentStudent?.TWELFTH_DETAILS || {};
+  const graduationDetails = currentStudent?.GRADUATION_DETAILS || {};
+  const fullName = officialDetails["FULL NAME OF STUDENT"] || currentStudent?.name || "-";
+  const rollNo = officialDetails.SN || currentStudent?.id || "-";
+  const gender = currentStudent?.gender || officialDetails.GENDER || "-";
+  const dob = currentStudent?.dob || officialDetails["BIRTH DATE"] || "-";
+  const email = currentStudent?.email || officialDetails["EMAIL ID"] || "-";
+  const phone = currentStudent?.phone || officialDetails["MOBILE NO."] || "-";
+  const passingYear =
+    graduationDetails["GRADUATION PASSING YR"] ||
+    currentStudent?.passingYear ||
+    currentStudent?.admissionYear ||
+    "-";
+  const tenthPercentage =
+    currentStudent?.tenthPercentage ?? tenthDetails["10th OVERALL MARKS %"] ?? "-";
+  const twelfthPercentage =
+    currentStudent?.twelfthPercentage ?? twelfthDetails["12th OVERALL MARKS %"] ?? "-";
 
   return (
     <div className="space-y-6">
       <section className="rounded-3xl bg-gradient-to-r from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7] p-6 text-white shadow-sm">
-        <h2 className="text-2xl font-semibold">Welcome back, {currentStudent?.name || "Student"}</h2>
+        <h2 className="text-2xl font-semibold">Welcome back, {fullName === "-" ? "Student" : fullName}</h2>
         <p className="mt-1 text-sm text-white/85">
           Track your certification performance and keep your exam progress on target.
         </p>
@@ -104,11 +144,19 @@ export default function StudentDashboard() {
 
         <Panel title="Profile Snapshot">
           <div className="space-y-2 text-sm text-gray-700">
-            <p><span className="font-medium text-gray-900">Roll No:</span> {currentStudent?.id || "-"}</p>
-            <p><span className="font-medium text-gray-900">Email:</span> {currentStudent?.email || "-"}</p>
-            <p><span className="font-medium text-gray-900">Phone:</span> {currentStudent?.phone || "-"}</p>
-            <p><span className="font-medium text-gray-900">Project:</span> {currentStudent?.projectId || "-"}</p>
+            <p><span className="font-medium text-gray-900">Student Name:</span> {fullName}</p>
+            <p><span className="font-medium text-gray-900">Roll No:</span> {rollNo}</p>
+            <p><span className="font-medium text-gray-900">Gender:</span> {gender}</p>
+            <p><span className="font-medium text-gray-900">Date of Birth:</span> {dob}</p>
+            <p><span className="font-medium text-gray-900">Email:</span> {email}</p>
+            <p><span className="font-medium text-gray-900">Phone:</span> {phone}</p>
+            <p><span className="font-medium text-gray-900">Passing Year:</span> {passingYear}</p>
+            <p><span className="font-medium text-gray-900">Current Semester:</span> {currentStudent?.currentSemester || "-"}</p>
+            <p><span className="font-medium text-gray-900">10th Percentage:</span> {tenthPercentage !== "-" ? `${tenthPercentage}%` : "-"}</p>
+            <p><span className="font-medium text-gray-900">12th Percentage:</span> {twelfthPercentage !== "-" ? `${twelfthPercentage}%` : "-"}</p>
             <p><span className="font-medium text-gray-900">Current Certificate:</span> {currentStudent?.certificate || "-"}</p>
+            <p><span className="font-medium text-gray-900">Progress:</span> {currentStudent?.progress || "0%"}</p>
+            <p><span className="font-medium text-gray-900">Exams:</span> {currentStudent?.exams || "0 / 0"}</p>
           </div>
         </Panel>
       </section>

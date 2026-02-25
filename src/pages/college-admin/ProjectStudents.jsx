@@ -1,15 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { students } from "../../data/students";
+import { getStudentsByProject } from "../../../services/studentService";
 import StudentModal from "../../components/StudentModal";
 
 export default function ProjectStudents() {
   const { projectId } = useParams();
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [filteredStudents, setFilteredStudents] = useState([]);
 
-  const filteredStudents = students.filter(
-    (s) => s.projectId === projectId
-  );
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getStudentsByProject(projectId);
+        if (!mounted) return;
+        setFilteredStudents(s || []);
+      } catch (error) {
+        console.error("Failed to load project students:", error);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [projectId]);
 
   return (
     <div>

@@ -1,5 +1,6 @@
 import { certifications } from "../../data/certifications";
-import { students } from "../../data/students";
+import { useEffect, useState } from "react";
+import { getAllStudents } from "../../../services/studentService";
 
 const parseExamNumbers = (examsText) => {
   const [attemptedRaw, totalRaw] = String(examsText || "0 / 0")
@@ -11,6 +12,25 @@ const parseExamNumbers = (examsText) => {
 };
 
 export default function Exams() {
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await getAllStudents();
+        if (!mounted) return;
+        setStudents(s || []);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const examSummary = students.reduce(
     (summary, student) => {
       const parsed = parseExamNumbers(student.exams);

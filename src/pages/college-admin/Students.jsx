@@ -1,9 +1,28 @@
-import { useState } from "react";
-import { students } from "../../data/students";
+import { useEffect, useState } from "react";
+import { getAllStudents } from "../../../services/studentService";
 import StudentModal from "../../components/StudentModal";
 
 export default function Students() {
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const data = await getAllStudents();
+        if (!mounted) return;
+        setStudents(data || []);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div>
