@@ -26,6 +26,19 @@ const getUniqueEntries = (entries, seenKeys) => {
   return result;
 };
 
+const getCurrentYearFromProjectCode = (projectCodeValue) => {
+  const parts = String(projectCodeValue || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 3) {
+    return parts[2];
+  }
+
+  return "";
+};
+
 export default function StudentCertificateProgress() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -156,7 +169,19 @@ export default function StudentCertificateProgress() {
                   student?.passingYear ||
                   student?.admissionYear ||
                   "-";
-                const currentYear = student?.currentSemester || "-";
+                const structuredProjectCode =
+                  student?.projectCode ||
+                  student?.projectId ||
+                  location.state?.projectCode ||
+                  "";
+                const currentYearFromCode =
+                  getCurrentYearFromProjectCode(structuredProjectCode);
+                const currentYear =
+                  currentYearFromCode ||
+                  student?.currentYear ||
+                  student?.currentSemester ||
+                  student?.semesterLabel ||
+                  "-";
 
                 const seenKeys = new Set(
                   [

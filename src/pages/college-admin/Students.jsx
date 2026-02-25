@@ -1,17 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import {
-  getAllStudents,
-  getStudentsByProject,
-} from "../../../services/studentService";
+import { getStudentsByProject } from "../../../services/studentService";
 import { getAllProjectCodes } from "../../../services/projectCodeService";
+import { getCertificatesByProjectCode } from "../../../services/certificateService";
 import StudentModal from "../../components/StudentModal";
-
-const normalizeProjectCode = (value) =>
-  String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
 
 const normalizeStatus = (status) => {
   const value = String(status || "").trim().toLowerCase();
@@ -37,6 +29,7 @@ const toDisplayStudent = (student) => {
 
   const normalizedCertificates = certificateResults
     .map((result) => ({
+      id: String(result?.certificateId || "").trim(),
       name: String(result?.certificateName || "").trim(),
       status: normalizeStatus(result?.status || result?.result || "enrolled"),
     }))
@@ -44,6 +37,7 @@ const toDisplayStudent = (student) => {
 
   if (normalizedCertificates.length === 0 && student?.certificate) {
     normalizedCertificates.push({
+      id: "",
       name: String(student.certificate).trim(),
       status: normalizeStatus(student?.certificateStatus || "enrolled"),
     });
@@ -68,7 +62,6 @@ const toDisplayStudent = (student) => {
     currentYear:
       currentYearFromCode ||
       student?.currentYear ||
-      student?.currentYear ||
       student?.currentSemester ||
       student?.semesterLabel ||
       "-",
@@ -85,17 +78,76 @@ const toDisplayStudent = (student) => {
   };
 };
 
+const matchesCertificate = (student, certificate) => {
+  if (!certificate) return false;
+
+  const targetId = String(certificate.id || "").trim();
+  const targetName = String(certificate.name || "")
+    .trim()
+    .toLowerCase();
+
+  if (!targetName) return false;
+
+  const certificateIds = Array.isArray(student?.certificateIds)
+    ? student.certificateIds.map((id) => String(id).trim())
+    : [];
+  if (targetId && certificateIds.includes(targetId)) {
+    return true;
+  }
+
+  const resultMap =
+    student?.certificateResults && typeof student.certificateResults === "object"
+      ? student.certificateResults
+      : {};
+
+  if (targetId && resultMap[targetId]) {
+    return true;
+  }
+
+  const resultNameMatch = Object.values(resultMap).some(
+    (entry) =>
+      String(entry?.certificateName || "")
+        .trim()
+        .toLowerCase() === targetName,
+  );
+  if (resultNameMatch) {
+    return true;
+  }
+
+  const enrolledNames = Array.isArray(student?.enrolledCertificates)
+    ? student.enrolledCertificates
+    : [];
+  if (
+    enrolledNames.some(
+      (name) => String(name || "").trim().toLowerCase() === targetName,
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    String(student?.certificate || "")
+      .trim()
+      .toLowerCase() === targetName
+  );
+};
+
 export default function Students() {
   const { profile } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [projectOptions, setProjectOptions] = useState([]);
+  const [certificateOptions, setCertificateOptions] = useState([]);
+  const [selectedProjectCode, setSelectedProjectCode] = useState("");
+  const [selectedCertificateId, setSelectedCertificateId] = useState("");
+  const [projectStudents, setProjectStudents] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
+    const loadProjectOptions = async () => {
       try {
-        setLoading(true);
+        setLoadingProjects(true);
         const profileCollegeCode = String(
           profile?.collegeCode || profile?.college_code || "",
         )
@@ -112,13 +164,12 @@ export default function Students() {
         );
 
         if (collegeCodeCandidates.size === 0) {
-          if (mounted) setStudents([]);
+          if (mounted) setProjectOptions([]);
           return;
         }
 
         const allProjectCodes = await getAllProjectCodes();
-
-        const allowedProjectCodeList = (allProjectCodes || [])
+        const filteredProjectOptions = (allProjectCodes || [])
           .filter((projectCode) => {
             const projectCollegeId = String(projectCode.collegeId || "")
               .trim()
@@ -132,81 +183,128 @@ export default function Students() {
               collegeCodeCandidates.has(codePrefix)
             );
           })
-          .map((projectCode) => String(projectCode.code || "").trim())
-          .filter(Boolean);
-
-        const allowedProjectCodes = new Set(
-          allowedProjectCodeList
-            .map((code) => normalizeProjectCode(code))
-            .filter(Boolean),
-        );
-
-        // Primary source: read students directly from each allowed project code bucket.
-        const studentBuckets = await Promise.allSettled(
-          allowedProjectCodeList.map((projectCode) => getStudentsByProject(projectCode)),
-        );
-
-        const studentsFromProjectBuckets = studentBuckets
-          .filter((bucket) => bucket.status === "fulfilled")
-          .flatMap((bucket) => bucket.value || []);
-
-        // Fallback source: collection-group list, then filter by normalized project/college code.
-        const allStudents = await getAllStudents();
-        const fallbackStudents = (allStudents || []).filter((student) => {
-          const rawProjectCode = String(
-            student.projectCode || student.projectId || "",
-          ).trim();
-          const normalizedStudentCode = normalizeProjectCode(rawProjectCode);
-          const studentCollegeCode = String(
-            student.collegeCode || student.college_code || "",
-          )
-            .trim()
-            .toUpperCase();
-
-          if (allowedProjectCodes.has(normalizedStudentCode)) {
-            return true;
-          }
-
-          if (studentCollegeCode && collegeCodeCandidates.has(studentCollegeCode)) {
-            return true;
-          }
-
-          const codePrefix = rawProjectCode.split(/[/-]/)[0]?.trim().toUpperCase();
-          return Boolean(codePrefix && collegeCodeCandidates.has(codePrefix));
-        });
-
-        const mergedByKey = new Map();
-        [...studentsFromProjectBuckets, ...fallbackStudents].forEach((student) => {
-          const row = student || {};
-          const key = `${row.projectCode || row.projectId || "NA"}::${row.id || row.docId || row.email || row.name || "UNKNOWN"}`;
-          if (!mergedByKey.has(key)) {
-            mergedByKey.set(key, row);
-          }
-        });
-
-        const data = Array.from(mergedByKey.values()).map(toDisplayStudent);
+          .sort((a, b) =>
+            String(a.code || "").localeCompare(String(b.code || "")),
+          );
 
         if (!mounted) return;
-        setStudents(data || []);
+        setProjectOptions(filteredProjectOptions);
       } catch (error) {
-        console.error("Failed to load students:", error);
+        console.error("Failed to load project options:", error);
+        if (mounted) setProjectOptions([]);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setLoadingProjects(false);
       }
     };
-    load();
+
+    loadProjectOptions();
     return () => {
       mounted = false;
     };
   }, [profile]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProjectData = async () => {
+      if (!selectedProjectCode) {
+        setCertificateOptions([]);
+        setSelectedCertificateId("");
+        setProjectStudents([]);
+        return;
+      }
+
+      try {
+        setLoadingStudents(true);
+        setSelectedCertificateId("");
+        const [studentsByProject, certificatesByProject] = await Promise.all([
+          getStudentsByProject(selectedProjectCode),
+          getCertificatesByProjectCode(selectedProjectCode),
+        ]);
+        if (!mounted) return;
+        setProjectStudents((studentsByProject || []).map(toDisplayStudent));
+        setCertificateOptions(certificatesByProject || []);
+      } catch (error) {
+        console.error("Failed to load selected project data:", error);
+        if (!mounted) return;
+        setProjectStudents([]);
+        setCertificateOptions([]);
+      } finally {
+        if (mounted) setLoadingStudents(false);
+      }
+    };
+
+    loadProjectData();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedProjectCode]);
+
+  const selectedCertificate = useMemo(
+    () =>
+      certificateOptions.find(
+        (certificate) => String(certificate.id) === selectedCertificateId,
+      ) || null,
+    [certificateOptions, selectedCertificateId],
+  );
+
+  const students = useMemo(() => {
+    if (!selectedProjectCode || !selectedCertificate) return [];
+    return projectStudents.filter((student) =>
+      matchesCertificate(student, selectedCertificate),
+    );
+  }, [projectStudents, selectedCertificate, selectedProjectCode]);
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Students</h1>
         <p className="text-sm text-gray-500">
-          Students mapped to your college project codes
+          Select project code and certificate to view mapped students
         </p>
+      </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Project Code</span>
+          <select
+            value={selectedProjectCode}
+            onChange={(event) => setSelectedProjectCode(event.target.value)}
+            className="h-10 w-full rounded-lg border border-[#D7E2F1] bg-white px-3 text-sm outline-none"
+            disabled={loadingProjects}
+          >
+            <option value="">
+              {loadingProjects ? "Loading project codes..." : "Select project code"}
+            </option>
+            {projectOptions.map((projectOption) => (
+              <option key={projectOption.id} value={String(projectOption.code || "")}>
+                {projectOption.code}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Certificate</span>
+          <select
+            value={selectedCertificateId}
+            onChange={(event) => setSelectedCertificateId(event.target.value)}
+            className="h-10 w-full rounded-lg border border-[#D7E2F1] bg-white px-3 text-sm outline-none"
+            disabled={!selectedProjectCode || loadingStudents}
+          >
+            <option value="">
+              {!selectedProjectCode
+                ? "Select project code first"
+                : loadingStudents
+                  ? "Loading certificates..."
+                  : "Select certificate"}
+            </option>
+            {certificateOptions.map((certificate) => (
+              <option key={certificate.id} value={String(certificate.id || "")}>
+                {certificate.name || certificate.id}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="bg-white rounded-xl shadow border">
@@ -221,47 +319,66 @@ export default function Students() {
                 <th className="text-left px-3">Student ID</th>
                 <th className="text-left px-3">Name</th>
                 <th className="text-left px-3">Project Code</th>
-               <th className="text-left px-3">Email Id</th>
-               <th className="text-left px-3">Current Year</th>
-               <th className="text-left px-3">Certificates</th>
-               <th className="text-left px-3">Result Status</th>
+                <th className="text-left px-3">Email Id</th>
+                <th className="text-left px-3">Current Year</th>
+                <th className="text-left px-3">Certificates</th>
+                <th className="text-left px-3">Result Status</th>
               </tr>
             </thead>
 
             <tbody>
-              {loading && (
+              {(loadingProjects || loadingStudents) && (
                 <tr className="bg-gray-50">
-                  <td className="px-3 py-3 text-sm text-gray-500" colSpan={8}>
+                  <td className="px-3 py-6 text-center text-sm text-gray-500" colSpan={7}>
                     Loading students...
                   </td>
                 </tr>
               )}
-              {!loading && students.length === 0 && (
+              {!loadingProjects && !loadingStudents && !selectedProjectCode && (
                 <tr className="bg-gray-50">
-                  <td className="px-3 py-3 text-sm text-gray-500" colSpan={8}>
-                    No students found for your college project codes.
+                  <td className="px-3 py-6 text-center text-sm text-gray-500" colSpan={7}>
+                    Select a project code to continue.
                   </td>
                 </tr>
               )}
-              {students.map((s) => (
+              {!loadingProjects &&
+                !loadingStudents &&
+                selectedProjectCode &&
+                !selectedCertificateId && (
+                  <tr className="bg-gray-50">
+                    <td className="px-3 py-6 text-center text-sm text-gray-500" colSpan={7}>
+                      Select a certificate to view students.
+                    </td>
+                  </tr>
+                )}
+              {!loadingProjects &&
+                !loadingStudents &&
+                selectedProjectCode &&
+                selectedCertificateId &&
+                students.length === 0 && (
+                  <tr className="bg-gray-50">
+                    <td className="px-3 py-6 text-center text-sm text-gray-500" colSpan={7}>
+                      No students found for selected project code and certificate.
+                    </td>
+                  </tr>
+                )}
+              {students.map((student) => (
                 <tr
-                  key={`${s.projectCode || s.projectId || "NA"}-${s.id || s.docId || s.email || s.name}`}
-                  onClick={() => setSelectedStudent(s)}
+                  key={`${student.projectCode || student.projectId || "NA"}-${student.id || student.docId || student.email || student.name}`}
+                  onClick={() => setSelectedStudent(student)}
                   className="bg-gray-50 hover:bg-gray-100 cursor-pointer transition"
                 >
-                  <td className="px-3 py-3 font-medium">{s.id}</td>
-                  <td className="px-3">{s.name}</td>
-                  <td className="px-3 text-blue-600">{s.projectCode || s.projectId || "-"}</td>
-                  <td className="px-3">{s.email}</td>
+                  <td className="px-3 py-3 font-medium">{student.id}</td>
+                  <td className="px-3">{student.name}</td>
+                  <td className="px-3 text-blue-600">{student.projectCode || "-"}</td>
+                  <td className="px-3">{student.email}</td>
                   <td className="px-3">
                     <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs">
-                      {s.currentYear || "-"}
+                      {student.currentYear || "-"}
                     </span>
                   </td>
-                  <td className="px-3">
-                    {s.enrolledCertificates || "-"}
-                  </td>
-                  <td className="px-3">{s.certificateStatusSummary || "-"}</td>
+                  <td className="px-3">{student.enrolledCertificates || "-"}</td>
+                  <td className="px-3">{student.certificateStatusSummary || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -269,11 +386,7 @@ export default function Students() {
         </div>
       </div>
 
-      {/* MODAL */}
-      <StudentModal
-        student={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-      />
+      <StudentModal student={selectedStudent} onClose={() => setSelectedStudent(null)} />
     </div>
   );
 }

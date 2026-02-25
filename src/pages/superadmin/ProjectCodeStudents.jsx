@@ -109,8 +109,8 @@ export default function ProjectCodeStudents() {
 
   return (
     <SuperAdminLayout>
-      <div className="px-5 py-8 lg:px-6">
-        <div className="w-full space-y-6">
+      <div className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
+        <div className="w-full space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <button
@@ -120,11 +120,11 @@ export default function ProjectCodeStudents() {
                     `/superadmin/colleges/${projectCode?.collegeId || ""}/project-codes`,
                   )
                 }
-                className="mb-2 rounded-md bg-[#0B2A4A] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0f355b]"
+                className="mb-2 rounded-lg bg-[#0B2A4A] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0f355b]"
               >
                 ← Back to Project Codes
               </button>
-              <h1 className="text-[3rem] font-medium leading-none text-gray-900 sm:text-[2.2rem]">
+              <h1 className="text-3xl font-semibold leading-tight text-[#0B2A4A] sm:text-4xl">
                 Students List
               </h1>
             </div>
@@ -132,14 +132,14 @@ export default function ProjectCodeStudents() {
               <button
                 type="button"
                 onClick={() => setShowImportModal(true)}
-                className="rounded-lg bg-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-400"
+                className="rounded-lg bg-[#DCE5F1] px-4 py-2.5 text-sm font-semibold text-[#0B2A4A] hover:bg-[#cdd9e8]"
               >
                 + Bulk Add Students
               </button>
               <button
                 type="button"
                 onClick={() => setShowAddStudentModal(true)}
-                className="rounded-lg bg-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-400"
+                className="rounded-lg bg-[#DCE5F1] px-4 py-2.5 text-sm font-semibold text-[#0B2A4A] hover:bg-[#cdd9e8]"
               >
                 + Add New Student
               </button>
@@ -147,12 +147,12 @@ export default function ProjectCodeStudents() {
           </div>
 
           <section>
-            <h2 className="mb-3 text-[2rem] leading-none font-medium tracking-wide text-gray-900">
+            <h2 className="mb-3 text-2xl font-semibold tracking-wide text-[#0B2A4A]">
               FILTERS
             </h2>
-            <div className="rounded-[2rem] bg-gray-300 p-6">
-              <div className="flex flex-wrap items-end gap-6">
-                <label className="w-full min-w-[180px] flex-1 text-lg text-gray-900 sm:text-base">
+            <div className="rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-4 sm:p-5">
+              <div className="flex flex-wrap items-end gap-4">
+                <label className="w-full min-w-[180px] flex-1 text-sm font-medium text-[#0B2A4A]">
                   Roll No.
                   <input
                     type="text"
@@ -160,22 +160,22 @@ export default function ProjectCodeStudents() {
                     onChange={(e) =>
                       handleFilterChange("rollNo", e.target.value)
                     }
-                    className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-base outline-none sm:text-sm"
+                    className="mt-2 block h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none"
                   />
                 </label>
-                <label className="w-full min-w-[180px] flex-1 text-lg text-gray-900 sm:text-base">
+                <label className="w-full min-w-[180px] flex-1 text-sm font-medium text-[#0B2A4A]">
                   Name
                   <input
                     type="text"
                     value={filters.name}
                     onChange={(e) => handleFilterChange("name", e.target.value)}
-                    className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-base outline-none sm:text-sm"
+                    className="mt-2 block h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none"
                   />
                 </label>
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="ml-auto inline-flex items-center gap-2 rounded-full bg-[#003B7A] px-5 py-2 text-sm font-semibold text-white"
+                  className="ml-auto inline-flex h-10 items-center gap-2 rounded-lg bg-[#003B7A] px-4 text-sm font-semibold text-white"
                 >
                   <RotateCcw size={15} />
                   Reset
@@ -184,8 +184,8 @@ export default function ProjectCodeStudents() {
             </div>
           </section>
 
-          <section className="rounded-[2rem] bg-gray-300 p-6">
-            <div className="mb-3 grid grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] gap-3 px-3 text-base font-medium text-gray-900 lg:text-sm">
+          <section className="rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-4 sm:p-5">
+            <div className="mb-2 grid grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] gap-3 px-3 text-sm font-semibold text-[#0B2A4A]">
               <p>Student Name</p>
               <p>Roll No.</p>
               <p>DOB</p>
@@ -196,7 +196,7 @@ export default function ProjectCodeStudents() {
               <p />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {filteredStudents.map((student) => (
                 <div
                   key={student.docId || student.id}
@@ -224,7 +224,7 @@ export default function ProjectCodeStudents() {
                       }
                     }
                   }}
-                  className="grid cursor-pointer grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] items-center gap-3 rounded-xl bg-gray-100 px-4 py-3 text-base text-gray-900 transition hover:bg-white lg:text-sm"
+                  className="grid cursor-pointer grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] items-center gap-3 rounded-xl border border-[#D7E2F1] bg-white px-4 py-2.5 text-sm text-[#0B2A4A] transition hover:border-[#BCD0E7]"
                 >
                   <p className="pointer-events-none justify-self-start text-left font-medium text-[#0B2A4A]">
                     {student.name || "-"}
@@ -236,14 +236,14 @@ export default function ProjectCodeStudents() {
                   <p>{student.ugPercentage ?? "-"}</p>
                   <p>{student.pgPercentage ?? "-"}</p>
                   <span className="justify-self-end text-gray-600">
-                    <Pencil size={18} />
+                    <Pencil size={16} />
                   </span>
                 </div>
               ))}
             </div>
 
             {filteredStudents.length === 0 && (
-              <div className="rounded-xl bg-gray-100 px-5 py-8 text-center text-gray-600">
+              <div className="rounded-xl border border-[#D7E2F1] bg-white px-5 py-8 text-center text-sm text-gray-600">
                 No students found
               </div>
             )}

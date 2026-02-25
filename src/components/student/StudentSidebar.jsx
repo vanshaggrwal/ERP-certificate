@@ -78,7 +78,7 @@ export default function StudentSidebar({ mobileMenuOpen, setMobileMenuOpen }) {
           onClick={handleProfileClick}
           className={`mt-6 mx-auto flex w-[calc(100%-1.5rem)] items-center transition-all duration-200 ${
             isExpanded
-              ? "justify-center gap-3 rounded-xl border border-white/15 bg-white/12 p-3 shadow-sm backdrop-blur-sm hover:bg-white/20"
+              ? "justify-center gap-3 rounded-2xl border border-white/15 bg-white/12 p-3.5 shadow-sm backdrop-blur-sm hover:bg-white/20"
               : "justify-center rounded-xl p-2 hover:bg-white/10"
           }`}
           title="Open Profile"
@@ -87,11 +87,11 @@ export default function StudentSidebar({ mobileMenuOpen, setMobileMenuOpen }) {
             {studentInitial}
           </div>
           {isExpanded && (
-            <div className="text-left min-w-0">
-              <p className="truncate text-lg font-semibold leading-tight tracking-tight">
+            <div className="min-w-0 flex-1 text-left">
+              <p className="truncate text-xl font-semibold leading-tight tracking-tight">
                 {studentName}
               </p>
-              <span className="text-sm text-white/75">{roleLabel}</span>
+              <span className="block truncate text-sm text-white/75">{roleLabel}</span>
             </div>
           )}
         </button>

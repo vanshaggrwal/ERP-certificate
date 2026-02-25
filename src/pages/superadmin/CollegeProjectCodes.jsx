@@ -6,6 +6,7 @@ import {
 } from "../../../services/projectCodeService";
 import { getCollegeByCode } from "../../../services/collegeService";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
+import AddProjectCodeModal from "../../components/superadmin/AddProjectCodeModal";
 import { Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 
@@ -17,6 +18,7 @@ export default function CollegeProjectCodes() {
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [selectedProjectCode, setSelectedProjectCode] = useState("");
   const [deletingProjectId, setDeletingProjectId] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -327,6 +329,16 @@ export default function CollegeProjectCodes() {
           </section>
         </div>
       </div>
+
+      {showAddProjectModal && (
+        <AddProjectCodeModal
+          collegeId={collegeId}
+          collegeCode={String(college?.college_code || college?.collegeCode || collegeId)}
+          collegeName={String(college?.college_name || "")}
+          onClose={() => setShowAddProjectModal(false)}
+          onProjectCodeAdded={fetchData}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={confirmOpen}
