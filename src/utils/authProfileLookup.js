@@ -1,12 +1,19 @@
 import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 
+const isActiveProfile = (data) => (data?.isActive ?? true) !== false;
+
 const getFirstDocData = (snapshot) => {
   if (!snapshot || snapshot.empty) {
     return null;
   }
-  const first = snapshot.docs[0];
-  return { id: first.id, ...(first.data() || {}) };
+  const firstActive = snapshot.docs.find((snapshotDoc) =>
+    isActiveProfile(snapshotDoc.data() || {}),
+  );
+  if (!firstActive) {
+    return null;
+  }
+  return { id: firstActive.id, ...(firstActive.data() || {}) };
 };
 
 export const getAuthUserProfile = async ({ uid, email }) => {
@@ -16,12 +23,19 @@ export const getAuthUserProfile = async ({ uid, email }) => {
 
   const userSnap = await getDoc(doc(db, "users", uid));
   if (userSnap.exists()) {
-    return { id: userSnap.id, ...(userSnap.data() || {}) };
+    const userData = userSnap.data() || {};
+    if (isActiveProfile(userData)) {
+      return { id: userSnap.id, ...userData };
+    }
+    return null;
   }
 
   const studentByIdSnap = await getDoc(doc(db, "student_users", uid));
   if (studentByIdSnap.exists()) {
-    return { id: studentByIdSnap.id, ...(studentByIdSnap.data() || {}) };
+    const studentByIdData = studentByIdSnap.data() || {};
+    if (isActiveProfile(studentByIdData)) {
+      return { id: studentByIdSnap.id, ...studentByIdData };
+    }
   }
 
   const studentByUidSnap = await getDocs(

@@ -1,5 +1,10 @@
 import { db, firebaseConfig } from "../src/firebase/config";
-import { createUserWithEmailAndPassword, getAuth, signOut } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  sendPasswordResetEmail,
+  signOut,
+} from "firebase/auth";
 import { getApps, initializeApp } from "firebase/app";
 import {
   collection,
@@ -11,11 +16,14 @@ import {
   getDocs,
   deleteDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 
 const USERS_COLLECTION = "users";
 const STUDENT_USERS_COLLECTION = "student_users";
 const SECONDARY_APP_NAME = "secondary-user-creation";
+const ACTIVE_FILTER = (data) => (data?.isActive ?? true) !== false;
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
 const getSecondaryAuth = () => {
   const existingApp = getApps().find((app) => app.name === SECONDARY_APP_NAME);
@@ -33,9 +41,7 @@ export const formatMobilePassword = (mobileValue) => {
 };
 
 export const createStudentAuthUser = async (studentData) => {
-  const email = String(studentData?.email || "")
-    .trim()
-    .toLowerCase();
+  const email = normalizeEmail(studentData?.email);
   const name = String(studentData?.name || "").trim();
   const mobilePassword = formatMobilePassword(studentData?.mobile);
   const projectCode = String(studentData?.projectCode || "").trim();
@@ -91,6 +97,8 @@ export const createStudentAuthUser = async (studentData) => {
           projectCode,
           collegeCode,
           studentId,
+          isActive: true,
+          deletedAt: null,
           updatedAt: new Date(),
         },
         { merge: true },
@@ -121,6 +129,8 @@ export const createStudentAuthUser = async (studentData) => {
         projectCode,
         collegeCode,
         studentId,
+        isActive: true,
+        deletedAt: null,
         createdAt: new Date(),
       },
       { merge: true },
@@ -135,15 +145,130 @@ export const createStudentAuthUser = async (studentData) => {
   }
 };
 
+const findUsersByEmail = async (email) => {
+  const normalized = normalizeEmail(email);
+  if (!normalized) {
+    return [];
+  }
+
+  const refsById = new Map();
+  const normalizedSnap = await getDocs(
+    query(collection(db, USERS_COLLECTION), where("email", "==", normalized)),
+  );
+  normalizedSnap.forEach((userDoc) => refsById.set(userDoc.id, userDoc));
+
+  if (normalized !== String(email || "").trim()) {
+    const rawSnap = await getDocs(
+      query(
+        collection(db, USERS_COLLECTION),
+        where("email", "==", String(email || "").trim()),
+      ),
+    );
+    rawSnap.forEach((userDoc) => refsById.set(userDoc.id, userDoc));
+  }
+
+  return Array.from(refsById.values());
+};
+
+const pickAdminDocToReactivate = (docs, targetRole) => {
+  if (!docs.length) {
+    return null;
+  }
+
+  const withRole = docs.filter(
+    (userDoc) => String(userDoc.data()?.role || "") === String(targetRole),
+  );
+  const activeWithRole = withRole.find((userDoc) => ACTIVE_FILTER(userDoc.data()));
+  if (activeWithRole) {
+    return activeWithRole;
+  }
+  if (withRole.length > 0) {
+    return withRole[0];
+  }
+
+  const activeAny = docs.find((userDoc) => ACTIVE_FILTER(userDoc.data()));
+  if (activeAny) {
+    return activeAny;
+  }
+  return docs[0];
+};
+
+const reactivateAdminByEmail = async ({
+  secondaryAuth,
+  name,
+  email,
+  role,
+  collegeCode = "",
+}) => {
+  const existingDocs = await findUsersByEmail(email);
+  if (!existingDocs.length) {
+    return null;
+  }
+
+  const docToKeep = pickAdminDocToReactivate(existingDocs, role);
+  const docData = docToKeep.data() || {};
+  const resolvedUid = String(docData.uid || docToKeep.id).trim();
+  const normalizedEmail = normalizeEmail(email);
+
+  await setDoc(
+    doc(db, USERS_COLLECTION, docToKeep.id),
+    {
+      uid: resolvedUid,
+      name: String(name || "").trim(),
+      email: normalizedEmail,
+      role,
+      collegeCode: role === "collegeAdmin" ? String(collegeCode || "").trim() : "",
+      isActive: true,
+      deletedAt: null,
+      updatedAt: new Date(),
+    },
+    { merge: true },
+  );
+
+  if (existingDocs.length > 1) {
+    const duplicateBatch = writeBatch(db);
+    existingDocs
+      .filter((userDoc) => userDoc.id !== docToKeep.id)
+      .forEach((duplicateDoc) => {
+        duplicateBatch.set(
+          duplicateDoc.ref,
+          {
+            isActive: false,
+            deletedAt: new Date(),
+            updatedAt: new Date(),
+          },
+          { merge: true },
+        );
+      });
+    await duplicateBatch.commit();
+  }
+
+  await sendPasswordResetEmail(secondaryAuth, normalizedEmail);
+  return { uid: resolvedUid, email: normalizedEmail, reactivated: true };
+};
+
 // Create a college admin user in both Firebase Auth and Firestore
 export const createCollegeAdmin = async (adminData, collegeCode) => {
+  const secondaryAuth = getSecondaryAuth();
+  const normalizedEmail = normalizeEmail(adminData?.email);
+
   try {
-    const secondaryAuth = getSecondaryAuth();
+    const reactivated = await reactivateAdminByEmail({
+      secondaryAuth,
+      name: adminData?.name,
+      email: normalizedEmail,
+      role: "collegeAdmin",
+      collegeCode,
+    });
+    if (reactivated) {
+      console.log("College admin reactivated:", reactivated.uid);
+      return reactivated.uid;
+    }
 
     // 1. Create user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(
       secondaryAuth,
-      adminData.email,
+      normalizedEmail,
       adminData.password,
     );
 
@@ -153,30 +278,45 @@ export const createCollegeAdmin = async (adminData, collegeCode) => {
     await setDoc(doc(db, USERS_COLLECTION, uid), {
       uid: uid,
       name: adminData.name,
-      email: adminData.email,
+      email: normalizedEmail,
       role: "collegeAdmin",
       collegeCode: collegeCode,
+      isActive: true,
+      deletedAt: null,
       createdAt: new Date(),
     });
 
-    await signOut(secondaryAuth);
     console.log("College admin created:", uid);
     return uid;
   } catch (error) {
     console.error("Error creating college admin:", error);
     throw error;
+  } finally {
+    await signOut(secondaryAuth).catch(() => null);
   }
 };
 
 // Create a super admin user in both Firebase Auth and Firestore
 export const createSuperAdmin = async (adminData) => {
+  const secondaryAuth = getSecondaryAuth();
+  const normalizedEmail = normalizeEmail(adminData?.email);
+
   try {
-    const secondaryAuth = getSecondaryAuth();
+    const reactivated = await reactivateAdminByEmail({
+      secondaryAuth,
+      name: adminData?.name,
+      email: normalizedEmail,
+      role: "superAdmin",
+    });
+    if (reactivated) {
+      console.log("Super admin reactivated:", reactivated.uid);
+      return reactivated.uid;
+    }
 
     // 1. Create user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(
       secondaryAuth,
-      adminData.email,
+      normalizedEmail,
       adminData.password,
     );
 
@@ -186,17 +326,20 @@ export const createSuperAdmin = async (adminData) => {
     await setDoc(doc(db, USERS_COLLECTION, uid), {
       uid: uid,
       name: adminData.name,
-      email: adminData.email,
+      email: normalizedEmail,
       role: "superAdmin",
+      isActive: true,
+      deletedAt: null,
       createdAt: new Date(),
     });
 
-    await signOut(secondaryAuth);
     console.log("Super admin created:", uid);
     return uid;
   } catch (error) {
     console.error("Error creating super admin:", error);
     throw error;
+  } finally {
+    await signOut(secondaryAuth).catch(() => null);
   }
 };
 
@@ -219,9 +362,13 @@ export const getUserByUID = async (uid) => {
     const docRef = doc(db, USERS_COLLECTION, uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
+      const data = docSnap.data() || {};
+      if (!ACTIVE_FILTER(data)) {
+        return null;
+      }
       return {
         uid: docSnap.id,
-        ...docSnap.data(),
+        ...data,
       };
     }
     return null;
@@ -240,10 +387,15 @@ export const getUserByCollegeCode = async (collegeCode) => {
     );
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
+      const activeUserDoc = querySnapshot.docs.find((userDoc) =>
+        ACTIVE_FILTER(userDoc.data()),
+      );
+      if (!activeUserDoc) {
+        return null;
+      }
       return {
-        uid: userDoc.id,
-        ...userDoc.data(),
+        uid: activeUserDoc.id,
+        ...activeUserDoc.data(),
       };
     }
     console.log("No user found for college code:", collegeCode);
@@ -264,10 +416,13 @@ export const getAllAdmins = async () => {
     const querySnapshot = await getDocs(q);
     const adminsList = [];
     querySnapshot.forEach((doc) => {
-      adminsList.push({
-        uid: doc.id,
-        ...doc.data(),
-      });
+      const data = doc.data() || {};
+      if (ACTIVE_FILTER(data)) {
+        adminsList.push({
+          uid: doc.id,
+          ...data,
+        });
+      }
     });
     return adminsList;
   } catch (error) {
@@ -289,15 +444,47 @@ export const updateAdmin = async (uid, updateData) => {
   }
 };
 
-// Delete a college admin user from Firestore
+const softDeleteUserByUid = async (uid) => {
+  const refs = new Map();
+  const byIdRef = doc(db, USERS_COLLECTION, uid);
+  const byIdSnap = await getDoc(byIdRef);
+  if (byIdSnap.exists()) {
+    refs.set(byIdRef.path, byIdRef);
+  }
+
+  const byUidSnap = await getDocs(
+    query(collection(db, USERS_COLLECTION), where("uid", "==", uid)),
+  );
+  byUidSnap.forEach((userDoc) => refs.set(userDoc.ref.path, userDoc.ref));
+
+  if (refs.size === 0) {
+    return false;
+  }
+
+  const batch = writeBatch(db);
+  refs.forEach((userRef) => {
+    batch.set(
+      userRef,
+      {
+        isActive: false,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      },
+      { merge: true },
+    );
+  });
+  await batch.commit();
+  return true;
+};
+
+// Soft delete a college admin user from Firestore
 export const deleteCollegeAdmin = async (uid) => {
   try {
-    // Delete from Firestore
-    await deleteDoc(doc(db, USERS_COLLECTION, uid));
-    console.log("College admin deleted from Firestore:", uid);
+    await softDeleteUserByUid(uid);
+    console.log("College admin soft deleted in Firestore:", uid);
     return true;
   } catch (error) {
-    console.error("Error deleting college admin:", error);
+    console.error("Error soft deleting college admin:", error);
     throw error;
   }
 };

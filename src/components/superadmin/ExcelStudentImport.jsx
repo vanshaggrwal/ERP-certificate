@@ -597,6 +597,7 @@ async function processRows(
       {
         projectCode,
         collegeCode,
+        isActive: true,
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -668,6 +669,7 @@ async function processRows(
         // Store original project code in data (with slashes)
         if (projectCode) docBody.projectCode = projectCode;
         docBody.collegeCode = collegeCode;
+        docBody.isActive = true;
 
         const idVal = official && official.SN ? String(official.SN) : undefined;
         docBody.createdAt = serverTimestamp();

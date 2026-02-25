@@ -1,10 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
-import { getProjectCodesByCollege } from "../../../services/projectCodeService";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  getProjectCodesByCollege,
+  softDeleteProjectCode,
+} from "../../../services/projectCodeService";
 import { getCollegeByCode } from "../../../services/collegeService";
 import Sidebar from "../../components/layout/Sidebar";
 import AddProjectCodeModal from "../../components/superadmin/AddProjectCodeModal";
-import { Pencil, RotateCcw } from "lucide-react";
+import { Pencil, RotateCcw, Trash2 } from "lucide-react";
 
 export default function CollegeProjectCodes() {
   const navigate = useNavigate();
@@ -16,6 +19,7 @@ export default function CollegeProjectCodes() {
   const [error, setError] = useState(null);
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [selectedProjectCode, setSelectedProjectCode] = useState("");
+  const [deletingProjectId, setDeletingProjectId] = useState("");
   const [filters, setFilters] = useState({
     code: "",
     course: "",
@@ -40,11 +44,7 @@ export default function CollegeProjectCodes() {
     };
   }, [projectCodes]);
 
-  useEffect(() => {
-    fetchData();
-  }, [collegeId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [projectCodesData, collegeData] = await Promise.all([
@@ -76,7 +76,11 @@ export default function CollegeProjectCodes() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [collegeId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleProjectCodeAdded = () => {
     fetchData();
@@ -110,6 +114,26 @@ export default function CollegeProjectCodes() {
 
   const openStudentList = (projectId) => {
     navigate(`/superadmin/project-codes/${projectId}/students`);
+  };
+
+  const handleSoftDeleteProjectCode = async (row) => {
+    const shouldDelete = window.confirm(
+      `Soft delete project code ${row.code}? You can restore it by adding the same project code again.`,
+    );
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      setDeletingProjectId(row.id);
+      await softDeleteProjectCode(row.id, row.code);
+      await fetchData();
+    } catch (deleteError) {
+      console.error(deleteError);
+      alert("Failed to soft delete project code");
+    } finally {
+      setDeletingProjectId("");
+    }
   };
 
   if (loading) {
@@ -256,25 +280,39 @@ export default function CollegeProjectCodes() {
 
             <div className="space-y-3">
               {filteredProjectCodes.map((row) => (
-                <button
+                <div
                   key={row.id}
-                  onClick={() => {
-                    setSelectedProjectCode(row.id);
-                    openStudentList(row.id);
-                  }}
-                  className={`grid w-full grid-cols-[2fr_1.2fr_1fr_48px] items-center gap-4 rounded-xl bg-gray-100 px-5 py-3 text-left text-lg text-gray-900 transition hover:bg-white sm:text-base ${
+                  className={`grid w-full grid-cols-[2fr_1.2fr_1fr_48px_48px] items-center gap-4 rounded-xl bg-gray-100 px-5 py-3 text-left text-lg text-gray-900 transition hover:bg-white sm:text-base ${
                     selectedProjectCode === row.id
                       ? "ring-2 ring-[#003B7A]/20"
                       : ""
                   }`}
                 >
-                  <p className="font-medium">{row.code}</p>
-                  <p>{row.course || "-"}</p>
-                  <p>{row.type || "-"}</p>
-                  <span className="justify-self-end text-gray-600">
-                    <Pencil size={18} />
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProjectCode(row.id);
+                      openStudentList(row.id);
+                    }}
+                    className="contents"
+                  >
+                    <p className="font-medium">{row.code}</p>
+                    <p>{row.course || "-"}</p>
+                    <p>{row.type || "-"}</p>
+                    <span className="justify-self-end text-gray-600">
+                      <Pencil size={18} />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSoftDeleteProjectCode(row)}
+                    disabled={deletingProjectId === row.id}
+                    className="justify-self-end text-red-600 hover:text-red-700 disabled:opacity-50"
+                    title="Soft delete project code"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               ))}
             </div>
 

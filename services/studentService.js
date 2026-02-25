@@ -71,6 +71,7 @@ export const addStudent = async (studentData) => {
       {
         projectCode: studentData.projectId,
         collegeCode: studentData.collegeCode || "",
+        isActive: true,
         updatedAt: new Date(),
       },
       { merge: true },
@@ -109,6 +110,7 @@ export const addStudent = async (studentData) => {
       currentSemester: studentData.currentSemester,
       email: studentData.email,
       phone: studentData.phone,
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
       OFFICIAL_DETAILS: {
