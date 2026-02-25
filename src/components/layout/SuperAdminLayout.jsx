@@ -4,7 +4,10 @@ import { useLocation } from "react-router-dom";
 
 export default function SuperAdminLayout({ children }) {
   const location = useLocation();
-  const hideTopbar = location.pathname === "/superadmin/profile";
+  const hideTopbar =
+    location.pathname === "/superadmin/profile" ||
+    location.pathname.startsWith("/superadmin/colleges") ||
+    location.pathname.startsWith("/superadmin/project-codes");
 
   return (
     <div className="flex h-screen bg-[#F3F6FA]">

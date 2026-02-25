@@ -172,28 +172,28 @@ export default function CollegeProjectCodes() {
 
   return (
     <SuperAdminLayout>
-      <div className="px-5 py-8 lg:px-6">
-        <div className="w-full space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
+        <div className="w-full space-y-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <button
                 type="button"
                 onClick={() => navigate("/superadmin/colleges")}
-                className="mb-2 rounded-md bg-[#0B2A4A] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0f355b]"
+                className="mb-2 rounded-lg bg-[#0B2A4A] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0f355b]"
               >
                 ← Back to Colleges
               </button>
-              <h1 className="text-[2.15rem] leading-tight font-medium text-gray-900">
+              <h1 className="text-3xl font-semibold leading-tight text-[#0B2A4A] sm:text-4xl">
                 {college?.college_name || collegeId}
               </h1>
-              <h2 className="text-[2.15rem] leading-tight font-medium text-gray-900">
+              <h2 className="text-3xl font-semibold leading-tight text-[#0B2A4A] sm:text-4xl">
                 Project Code List
               </h2>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowAddProjectModal(true)}
-                className="rounded-lg bg-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-400"
+                className="rounded-lg bg-[#DCE5F1] px-4 py-2.5 text-sm font-semibold text-[#0B2A4A] hover:bg-[#cdd9e8]"
               >
                 + Add New Project Code
               </button>
@@ -201,17 +201,17 @@ export default function CollegeProjectCodes() {
           </div>
 
           <section>
-            <h3 className="mb-3 text-[2rem] leading-none font-medium tracking-wide text-gray-900">
+            <h3 className="mb-3 text-2xl font-semibold tracking-wide text-[#0B2A4A]">
               FILTERS
             </h3>
-            <div className="rounded-[2rem] bg-gray-300 p-6">
-              <div className="flex flex-wrap items-end gap-6">
-                <label className="w-full min-w-[180px] flex-1 text-lg text-gray-900 sm:text-base">
+            <div className="rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-4 sm:p-5">
+              <div className="flex flex-wrap items-end gap-4">
+                <label className="w-full min-w-[180px] flex-1 text-sm font-medium text-[#0B2A4A]">
                   Project Code
                   <select
                     value={filters.code}
                     onChange={(e) => handleFilterChange("code", e.target.value)}
-                    className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-sm outline-none"
+                    className="mt-2 block h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none"
                   >
                     <option value="">All project codes</option>
                     {filterOptions.codes.map((value) => (
@@ -221,14 +221,14 @@ export default function CollegeProjectCodes() {
                     ))}
                   </select>
                 </label>
-                <label className="w-full min-w-[140px] flex-1 text-lg text-gray-900 sm:text-base">
+                <label className="w-full min-w-[140px] flex-1 text-sm font-medium text-[#0B2A4A]">
                   Course
                   <select
                     value={filters.course}
                     onChange={(e) =>
                       handleFilterChange("course", e.target.value)
                     }
-                    className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-sm outline-none"
+                    className="mt-2 block h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none"
                   >
                     <option value="">All courses</option>
                     {filterOptions.courses.map((value) => (
@@ -238,12 +238,12 @@ export default function CollegeProjectCodes() {
                     ))}
                   </select>
                 </label>
-                <label className="w-full min-w-[120px] flex-1 text-lg text-gray-900 sm:text-base">
+                <label className="w-full min-w-[120px] flex-1 text-sm font-medium text-[#0B2A4A]">
                   Year
                   <select
                     value={filters.year}
                     onChange={(e) => handleFilterChange("year", e.target.value)}
-                    className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-sm outline-none"
+                    className="mt-2 block h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none"
                   >
                     <option value="">All years</option>
                     {filterOptions.years.map((value) => (
@@ -253,12 +253,12 @@ export default function CollegeProjectCodes() {
                     ))}
                   </select>
                 </label>
-                <label className="w-full min-w-[120px] flex-1 text-lg text-gray-900 sm:text-base">
+                <label className="w-full min-w-[120px] flex-1 text-sm font-medium text-[#0B2A4A]">
                   Type
                   <select
                     value={filters.type}
                     onChange={(e) => handleFilterChange("type", e.target.value)}
-                    className="mt-2 block h-10 w-full border-none bg-gray-100 px-3 text-sm outline-none"
+                    className="mt-2 block h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none"
                   >
                     <option value="">All types</option>
                     {filterOptions.types.map((value) => (
@@ -271,7 +271,7 @@ export default function CollegeProjectCodes() {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="inline-flex items-center gap-2 rounded-full bg-[#003B7A] px-5 py-2 text-sm font-semibold text-white"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#003B7A] px-4 text-sm font-semibold text-white"
                 >
                   <RotateCcw size={15} />
                   Reset
@@ -280,54 +280,53 @@ export default function CollegeProjectCodes() {
             </div>
           </section>
 
-          <section className="rounded-[2rem] bg-gray-300 p-6">
-            <div className="mb-3 grid grid-cols-[2fr_1.2fr_1fr_48px] gap-4 px-4 text-lg font-medium text-gray-900 sm:text-sm">
+          <section className="rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-4 sm:p-5">
+            <div className="mb-2 grid grid-cols-[2fr_1.2fr_1fr_40px_40px] gap-3 px-3 text-sm font-semibold text-[#0B2A4A]">
               <p>Project Code</p>
               <p>Course</p>
               <p>Type</p>
               <p />
+              <p />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {filteredProjectCodes.map((row) => (
                 <div
                   key={row.id}
-                  className={`grid w-full grid-cols-[2fr_1.2fr_1fr_48px_48px] items-center gap-4 rounded-xl bg-gray-100 px-5 py-3 text-left text-lg text-gray-900 transition hover:bg-white sm:text-base ${
+                  onClick={() => {
+                    setSelectedProjectCode(row.id);
+                    openStudentList(row.id);
+                  }}
+                  className={`grid w-full cursor-pointer grid-cols-[2fr_1.2fr_1fr_40px_40px] items-center gap-3 rounded-xl border border-[#D7E2F1] bg-white px-4 py-2.5 text-sm text-[#0B2A4A] transition hover:border-[#BCD0E7] ${
                     selectedProjectCode === row.id
                       ? "ring-2 ring-[#003B7A]/20"
                       : ""
                   }`}
                 >
+                  <p className="truncate font-medium text-left">{row.code}</p>
+                  <p className="text-left">{row.course || "-"}</p>
+                  <p className="text-left">{row.type || "-"}</p>
+                  <span className="justify-self-center text-gray-600">
+                    <Paperclip size={16} />
+                  </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedProjectCode(row.id);
-                      openStudentList(row.id);
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openDeleteConfirm(row);
                     }}
-                    className="contents"
-                  >
-                    <p className="font-medium">{row.code}</p>
-                    <p>{row.course || "-"}</p>
-                    <p>{row.type || "-"}</p>
-                    <span className="justify-self-end text-gray-600">
-                      <Paperclip size={18} />
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openDeleteConfirm(row)}
                     disabled={deletingProjectId === row.id}
-                    className="justify-self-end text-red-600 hover:text-red-700 disabled:opacity-50"
+                    className="justify-self-center text-red-600 hover:text-red-700 disabled:opacity-50"
                     title="Soft delete project code"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               ))}
             </div>
 
             {filteredProjectCodes.length === 0 && (
-              <div className="rounded-xl bg-gray-100 px-5 py-8 text-center text-gray-600">
+              <div className="rounded-xl border border-[#D7E2F1] bg-white px-5 py-8 text-center text-sm text-gray-600">
                 No project codes found
               </div>
             )}
