@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { addCollege, updateCollege } from "../../../services/collegeService";
 import { createCollegeAdmin } from "../../../services/userService";
+import { uploadImageToCloudinary } from "../../../services/cloudinaryService";
 
 export default function AddEditCollegeModal({
   college,
@@ -19,7 +20,10 @@ export default function AddEditCollegeModal({
   });
 
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState("");
 
   useEffect(() => {
     if (college) {
@@ -31,18 +35,46 @@ export default function AddEditCollegeModal({
         adminEmail: "",
         adminPassword: "",
       });
+      setLogoFile(null);
+    } else {
+      setForm({
+        name: "",
+        code: "",
+        logoUrl: "",
+        adminName: "",
+        adminEmail: "",
+        adminPassword: "",
+      });
+      setLogoFile(null);
     }
   }, [college]);
+
+  useEffect(() => {
+    if (logoFile) {
+      const objectUrl = URL.createObjectURL(logoFile);
+      setLogoPreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+
+    setLogoPreviewUrl(form.logoUrl || "");
+    return undefined;
+  }, [logoFile, form.logoUrl]);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setLogoFile(file);
+    setError(null);
+  };
+
   // Validate form fields
   const validateForm = () => {
     if (isEdit) {
-      // For edit mode, only logo URL is required
-      if (!form.logoUrl.trim()) {
-        setError("Logo URL is required");
+      // For edit mode, existing logo or newly selected image is required
+      if (!form.logoUrl.trim() && !logoFile) {
+        setError("College logo is required");
         return false;
       }
     } else {
@@ -55,8 +87,8 @@ export default function AddEditCollegeModal({
         setError("College code is required");
         return false;
       }
-      if (!form.logoUrl.trim()) {
-        setError("Logo URL is required");
+      if (!logoFile && !form.logoUrl.trim()) {
+        setError("College logo is required");
         return false;
       }
       if (!form.adminName.trim()) {
@@ -81,10 +113,21 @@ export default function AddEditCollegeModal({
 
     setLoading(true);
     try {
+      let logoUrl = form.logoUrl.trim();
+
+      if (logoFile) {
+        setUploadingLogo(true);
+        const uploadedLogo = await uploadImageToCloudinary(logoFile, {
+          folder: "colleges",
+        });
+        logoUrl = uploadedLogo.secureUrl;
+        setForm((prev) => ({ ...prev, logoUrl }));
+      }
+
       if (isEdit) {
         // In edit mode, only update the logo URL
         await updateCollege(college.collegeCode, {
-          college_logo: form.logoUrl,
+          college_logo: logoUrl,
         });
 
         alert("College updated successfully!");
@@ -93,7 +136,7 @@ export default function AddEditCollegeModal({
         await addCollege({
           college_name: form.name,
           college_code: form.code,
-          college_logo: form.logoUrl,
+          college_logo: logoUrl,
         });
 
         // 2. Create college admin
@@ -122,6 +165,7 @@ export default function AddEditCollegeModal({
         adminEmail: "",
         adminPassword: "",
       });
+      setLogoFile(null);
 
       onClose();
     } catch (err) {
@@ -142,6 +186,7 @@ export default function AddEditCollegeModal({
         setError(err.message || "Failed to process request");
       }
     } finally {
+      setUploadingLogo(false);
       setLoading(false);
     }
   };
@@ -189,14 +234,42 @@ export default function AddEditCollegeModal({
           )}
 
           <div>
-            <label className="text-sm font-medium">Logo URL</label>
+            <label className="text-sm font-medium">College Logo</label>
             <input
-              name="logoUrl"
-              value={form.logoUrl}
-              onChange={handleChange}
-              placeholder="https://..."
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
               className="w-full border rounded-lg px-4 py-2"
             />
+            <p className="mt-2 text-xs text-gray-500">
+              Selected logo will be uploaded to Cloudinary and saved as a
+              Cloudinary URL.
+            </p>
+            {logoFile && (
+              <p className="mt-1 text-xs text-gray-700">
+                Selected: {logoFile.name}
+              </p>
+            )}
+            {form.logoUrl && (
+              <p className="mt-1 text-xs text-gray-600 break-all">
+                Current logo URL: {form.logoUrl}
+              </p>
+            )}
+
+            {logoPreviewUrl && (
+              <div className="mt-3 rounded-lg border bg-gray-50 p-3">
+                <p className="mb-2 text-xs font-medium text-gray-700">
+                  Logo Preview
+                </p>
+                <div className="h-28 w-full overflow-hidden rounded-md bg-white">
+                  <img
+                    src={logoPreviewUrl}
+                    alt="College logo preview"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {!isEdit && (
@@ -241,16 +314,18 @@ export default function AddEditCollegeModal({
           </button>
           <button
             onClick={handleCreate}
-            disabled={loading}
+            disabled={loading || uploadingLogo}
             className="bg-[#0B2A4A] text-white px-5 py-2 rounded-lg disabled:opacity-50"
           >
-            {loading
-              ? isEdit
-                ? "Updating..."
-                : "Creating..."
-              : isEdit
-                ? "Update"
-                : "Create"}
+            {uploadingLogo
+              ? "Uploading..."
+              : loading
+                ? isEdit
+                  ? "Updating..."
+                  : "Creating..."
+                : isEdit
+                  ? "Update"
+                  : "Create"}
           </button>
         </div>
       </div>
