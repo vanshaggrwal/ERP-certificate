@@ -14,6 +14,16 @@ import {
   increment,
 } from "firebase/firestore";
 import { codeToDocId } from "../src/utils/projectCodeUtils";
+import { isLocalDbMode } from "./dbModeService";
+import {
+  localCreateCertificateAndEnrollStudents,
+  localEnrollProjectCodeIntoCertificate,
+  localGetAllCertificates,
+  localGetAssignedProjectCodesForCertificate,
+  localGetCertificatesByIds,
+  localGetCertificatesByProjectCode,
+  localUnassignProjectCodeFromCertificate,
+} from "./localDbService";
 
 const CERTIFICATES_COLLECTION = "certificates";
 const STUDENTS_COLLECTION = "students";
@@ -21,6 +31,9 @@ const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION =
   "certificateProjectEnrollments";
 
 export const getAllCertificates = async () => {
+  if (isLocalDbMode()) {
+    return localGetAllCertificates();
+  }
   try {
     const snapshot = await getDocs(collection(db, CERTIFICATES_COLLECTION));
     const certificates = [];
@@ -44,6 +57,9 @@ export const getAllCertificates = async () => {
 };
 
 export const getCertificatesByIds = async (certificateIds) => {
+  if (isLocalDbMode()) {
+    return localGetCertificatesByIds(certificateIds);
+  }
   try {
     if (!Array.isArray(certificateIds) || certificateIds.length === 0) {
       return [];
@@ -68,6 +84,9 @@ export const getCertificatesByIds = async (certificateIds) => {
 };
 
 export const createCertificateAndEnrollStudents = async (certificateData) => {
+  if (isLocalDbMode()) {
+    return localCreateCertificateAndEnrollStudents(certificateData);
+  }
   try {
     const certificateRef = await addDoc(
       collection(db, CERTIFICATES_COLLECTION),
@@ -97,6 +116,13 @@ export const enrollProjectCodeIntoCertificate = async ({
   certificateName,
   projectCode,
 }) => {
+  if (isLocalDbMode()) {
+    return localEnrollProjectCodeIntoCertificate({
+      certificateId,
+      certificateName,
+      projectCode,
+    });
+  }
   try {
     const enrollmentDocId = `${certificateId}__${encodeURIComponent(projectCode)}`;
     await setDoc(
@@ -179,6 +205,9 @@ export const enrollProjectCodeIntoCertificate = async ({
 };
 
 export const getAssignedProjectCodesForCertificate = async (certificateId) => {
+  if (isLocalDbMode()) {
+    return localGetAssignedProjectCodesForCertificate(certificateId);
+  }
   try {
     const enrollmentsQuery = query(
       collection(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION),
@@ -205,6 +234,9 @@ export const getAssignedProjectCodesForCertificate = async (certificateId) => {
 };
 
 export const getCertificatesByProjectCode = async (projectCode) => {
+  if (isLocalDbMode()) {
+    return localGetCertificatesByProjectCode(projectCode);
+  }
   try {
     const normalizedProjectCode = String(projectCode || "").trim();
     if (!normalizedProjectCode) return [];
@@ -230,7 +262,9 @@ export const getCertificatesByProjectCode = async (projectCode) => {
       .filter((row) => normalizeForCompare(row.projectCode) === targetCode);
 
     const certificateIds = [
-      ...new Set(enrollmentRows.map((row) => row.certificateId).filter(Boolean)),
+      ...new Set(
+        enrollmentRows.map((row) => row.certificateId).filter(Boolean),
+      ),
     ];
     if (certificateIds.length === 0) return [];
 
@@ -241,7 +275,10 @@ export const getCertificatesByProjectCode = async (projectCode) => {
 
     return certificates.map((certificate) => ({
       ...certificate,
-      name: certificate.name || nameFallbackById.get(certificate.id) || "Certificate",
+      name:
+        certificate.name ||
+        nameFallbackById.get(certificate.id) ||
+        "Certificate",
     }));
   } catch (error) {
     console.error("Error getting certificates by project code:", error);
@@ -255,6 +292,14 @@ export const unassignProjectCodeFromCertificate = async ({
   projectCode,
   preserveStudentCertificateData = false,
 }) => {
+  if (isLocalDbMode()) {
+    return localUnassignProjectCodeFromCertificate({
+      certificateId,
+      certificateName,
+      projectCode,
+      preserveStudentCertificateData,
+    });
+  }
   try {
     const enrollmentDocId = `${certificateId}__${encodeURIComponent(projectCode)}`;
 

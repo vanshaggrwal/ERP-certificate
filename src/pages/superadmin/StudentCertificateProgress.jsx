@@ -35,11 +35,13 @@ export default function StudentCertificateProgress() {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [certificateWarning, setCertificateWarning] = useState("");
 
   const fetchStudentData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
+      setCertificateWarning("");
 
       const projectCodeFromState = String(
         location.state?.projectCode || "",
@@ -67,8 +69,24 @@ export default function StudentCertificateProgress() {
       const certificateIds = Array.isArray(studentData.certificateIds)
         ? studentData.certificateIds
         : [];
-      const enrolledCertificates = await getCertificatesByIds(certificateIds);
-      setCertificates(enrolledCertificates);
+      if (certificateIds.length === 0) {
+        setCertificates([]);
+      } else {
+        try {
+          const enrolledCertificates =
+            await getCertificatesByIds(certificateIds);
+          setCertificates(enrolledCertificates);
+        } catch (certificateError) {
+          console.error(
+            "Failed to load certificates for student:",
+            certificateError,
+          );
+          setCertificates([]);
+          setCertificateWarning(
+            "Student profile loaded, but certificate details could not be loaded.",
+          );
+        }
+      }
     } catch (fetchError) {
       setError("Failed to load student certificate progress");
       console.error(fetchError);
@@ -95,6 +113,9 @@ export default function StudentCertificateProgress() {
 
           {loading && <div className="text-gray-600">Loading...</div>}
           {!loading && error && <div className="text-red-600">{error}</div>}
+          {!loading && !error && certificateWarning && (
+            <div className="text-yellow-700">{certificateWarning}</div>
+          )}
 
           {!loading && !error && student && (
             <>

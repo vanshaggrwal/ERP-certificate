@@ -13,11 +13,23 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { codeToDocId } from "../src/utils/projectCodeUtils";
+import { isLocalDbMode } from "./dbModeService";
+import {
+  localAddProjectCode,
+  localGetAllProjectCodes,
+  localGetProjectCodeById,
+  localGetProjectCodesByCollege,
+  localSoftDeleteProjectCode,
+  localUpdateProjectCode,
+} from "./localDbService";
 
 const PROJECT_CODES_COLLECTION = "projectCodes";
 const STUDENTS_COLLECTION = "students";
 
-const normalizeValue = (value) => String(value || "").trim().toLowerCase();
+const normalizeValue = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const setStudentsProjectActiveStatus = async (projectCode, isActive) => {
   if (!projectCode) {
@@ -56,7 +68,10 @@ const setStudentsProjectActiveStatus = async (projectCode, isActive) => {
   }
 
   const studentUsersSnapshot = await getDocs(
-    query(collection(db, "student_users"), where("projectCode", "==", projectCode)),
+    query(
+      collection(db, "student_users"),
+      where("projectCode", "==", projectCode),
+    ),
   );
   if (!studentUsersSnapshot.empty) {
     const usersBatch = writeBatch(db);
@@ -77,6 +92,9 @@ const setStudentsProjectActiveStatus = async (projectCode, isActive) => {
 
 // Add a project code to Firestore
 export const addProjectCode = async (projectData) => {
+  if (isLocalDbMode()) {
+    return localAddProjectCode(projectData);
+  }
   try {
     const normalizedCode = String(projectData.code || "").trim();
     const normalizedCollegeId = String(projectData.collegeId || "").trim();
@@ -95,8 +113,10 @@ export const addProjectCode = async (projectData) => {
           return (
             normalizeValue(existingData.course) ===
               normalizeValue(projectData.course) &&
-            normalizeValue(existingData.year) === normalizeValue(projectData.year) &&
-            normalizeValue(existingData.type) === normalizeValue(projectData.type) &&
+            normalizeValue(existingData.year) ===
+              normalizeValue(projectData.year) &&
+            normalizeValue(existingData.type) ===
+              normalizeValue(projectData.type) &&
             normalizeValue(existingData.academicYear) ===
               normalizeValue(projectData.academicYear)
           );
@@ -136,9 +156,9 @@ export const addProjectCode = async (projectData) => {
 
     // Also add this project code to the corresponding college document
     try {
-        const collegeDocId =
-          projectData.collegeId || projectData.collegeCode || projectData.college;
-        if (collegeDocId) {
+      const collegeDocId =
+        projectData.collegeId || projectData.collegeCode || projectData.college;
+      if (collegeDocId) {
         const collegeRef = doc(db, "college", String(collegeDocId));
         await updateDoc(collegeRef, {
           project_codes: arrayUnion(projectData.code),
@@ -149,7 +169,7 @@ export const addProjectCode = async (projectData) => {
       console.error(
         "Failed to update college document with project code:",
         err,
-        );
+      );
     }
     await setStudentsProjectActiveStatus(normalizedCode, true);
     return docRef.id;
@@ -161,6 +181,9 @@ export const addProjectCode = async (projectData) => {
 
 // Get all project codes
 export const getAllProjectCodes = async () => {
+  if (isLocalDbMode()) {
+    return localGetAllProjectCodes();
+  }
   try {
     const querySnapshot = await getDocs(
       collection(db, PROJECT_CODES_COLLECTION),
@@ -181,6 +204,9 @@ export const getAllProjectCodes = async () => {
 
 // Get project codes by college ID
 export const getProjectCodesByCollege = async (collegeId) => {
+  if (isLocalDbMode()) {
+    return localGetProjectCodesByCollege(collegeId);
+  }
   try {
     const q = query(
       collection(db, PROJECT_CODES_COLLECTION),
@@ -203,6 +229,9 @@ export const getProjectCodesByCollege = async (collegeId) => {
 
 // Get project code by ID
 export const getProjectCodeById = async (id) => {
+  if (isLocalDbMode()) {
+    return localGetProjectCodeById(id);
+  }
   try {
     const docRef = doc(db, PROJECT_CODES_COLLECTION, id);
     const docSnap = await getDoc(docRef);
@@ -223,6 +252,9 @@ export const getProjectCodeById = async (id) => {
 
 // Update project code
 export const updateProjectCode = async (id, updateData) => {
+  if (isLocalDbMode()) {
+    return localUpdateProjectCode(id, updateData);
+  }
   try {
     const docRef = doc(db, PROJECT_CODES_COLLECTION, id);
     await updateDoc(docRef, updateData);
@@ -236,6 +268,9 @@ export const updateProjectCode = async (id, updateData) => {
 
 // Soft delete project code
 export const softDeleteProjectCode = async (id, projectCode) => {
+  if (isLocalDbMode()) {
+    return localSoftDeleteProjectCode(id, projectCode);
+  }
   try {
     await updateDoc(doc(db, PROJECT_CODES_COLLECTION, id), {
       isActive: false,

@@ -15,6 +15,20 @@ import {
   documentId,
 } from "firebase/firestore";
 import { codeToDocId, docIdToCode } from "../src/utils/projectCodeUtils";
+import { isLocalDbMode } from "./dbModeService";
+import {
+  localAddStudent,
+  localDeleteStudent,
+  localGetAllProjectCodesFromStudents,
+  localGetAllStudents,
+  localGetStudentByDocId,
+  localGetStudentByEmail,
+  localGetStudentById,
+  localGetStudentByProjectAndId,
+  localGetStudentForAuthUser,
+  localGetStudentsByProject,
+  localUpdateStudent,
+} from "./localDbService";
 
 const STUDENTS_COLLECTION = "students";
 const CERTIFICATES_COLLECTION = "certificates";
@@ -23,6 +37,9 @@ const CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION =
 
 // Add a student to Firestore
 export const addStudent = async (studentData) => {
+  if (isLocalDbMode()) {
+    return localAddStudent(studentData);
+  }
   try {
     const enrollmentMappingsQuery = query(
       collection(db, CERTIFICATE_PROJECT_ENROLLMENTS_COLLECTION),
@@ -153,6 +170,9 @@ export const addStudent = async (studentData) => {
 
 // Get all students
 export const getAllStudents = async () => {
+  if (isLocalDbMode()) {
+    return localGetAllStudents();
+  }
   try {
     // Use collectionGroup to query all students_list subcollections
     const allStudentsQuery = collectionGroup(db, "students_list");
@@ -173,6 +193,9 @@ export const getAllStudents = async () => {
 
 // Get students by project ID
 export const getStudentsByProject = async (projectId) => {
+  if (isLocalDbMode()) {
+    return localGetStudentsByProject(projectId);
+  }
   try {
     const projectDocId = codeToDocId(projectId);
     const studentsList = collection(
@@ -199,6 +222,9 @@ export const getStudentsByProject = async (projectId) => {
 };
 
 export const getStudentByDocId = async (studentDocId) => {
+  if (isLocalDbMode()) {
+    return localGetStudentByDocId(studentDocId);
+  }
   try {
     if (!studentDocId) {
       return null;
@@ -226,6 +252,9 @@ export const getStudentByDocId = async (studentDocId) => {
 
 // Update student
 export const updateStudent = async (projectCode, id, updateData) => {
+  if (isLocalDbMode()) {
+    return localUpdateStudent(projectCode, id, updateData);
+  }
   try {
     const projectDocId = codeToDocId(projectCode);
     const docRef = doc(
@@ -246,6 +275,9 @@ export const updateStudent = async (projectCode, id, updateData) => {
 
 // Delete student
 export const deleteStudent = async (projectCode, id) => {
+  if (isLocalDbMode()) {
+    return localDeleteStudent(projectCode, id);
+  }
   try {
     const projectDocId = codeToDocId(projectCode);
     await deleteDoc(
@@ -261,6 +293,9 @@ export const deleteStudent = async (projectCode, id) => {
 
 // Get all unique project codes from students collection
 export const getAllProjectCodesFromStudents = async () => {
+  if (isLocalDbMode()) {
+    return localGetAllProjectCodesFromStudents();
+  }
   try {
     // Use collectionGroup to get all students_list subcollections
     const allStudentsQuery = collectionGroup(db, "students_list");
@@ -292,6 +327,9 @@ export const getAllProjectCodesFromStudents = async () => {
 
 // Get a single student by their email (search across all students_list subcollections)
 export const getStudentByEmail = async (email) => {
+  if (isLocalDbMode()) {
+    return localGetStudentByEmail(email);
+  }
   try {
     if (!email) return null;
 
@@ -325,6 +363,9 @@ export const getStudentByEmail = async (email) => {
 
 // Get a single student by their roll/id (search across all students_list subcollections)
 export const getStudentById = async (studentId) => {
+  if (isLocalDbMode()) {
+    return localGetStudentById(studentId);
+  }
   try {
     if (!studentId) return null;
     const q = query(
@@ -346,6 +387,9 @@ export const getStudentById = async (studentId) => {
 
 // Get a single student by project code + roll/id
 export const getStudentByProjectAndId = async (projectCode, studentId) => {
+  if (isLocalDbMode()) {
+    return localGetStudentByProjectAndId(projectCode, studentId);
+  }
   try {
     if (!projectCode || !studentId) return null;
     const projectDocId = codeToDocId(String(projectCode));
@@ -370,6 +414,9 @@ export const getStudentByProjectAndId = async (projectCode, studentId) => {
 
 // Resolve logged-in student's full record using the same auth profile identity.
 export const getStudentForAuthUser = async ({ profile, user } = {}) => {
+  if (isLocalDbMode()) {
+    return localGetStudentForAuthUser({ profile, user });
+  }
   try {
     const profileProjectCode = String(
       profile?.projectCode || profile?.projectId || "",

@@ -18,12 +18,27 @@ import {
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
+import { isLocalDbMode } from "./dbModeService";
+import {
+  localCreateCollegeAdmin,
+  localCreateStudentAuthUser,
+  localCreateSuperAdmin,
+  localDeleteCollegeAdmin,
+  localGetAllAdmins,
+  localGetUserByCollegeCode,
+  localGetUserByEmail,
+  localGetUserByUID,
+  localUpdateAdmin,
+} from "./localDbService";
 
 const USERS_COLLECTION = "users";
 const STUDENT_USERS_COLLECTION = "student_users";
 const SECONDARY_APP_NAME = "secondary-user-creation";
 const ACTIVE_FILTER = (data) => (data?.isActive ?? true) !== false;
-const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+const normalizeEmail = (email) =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
 
 const getSecondaryAuth = () => {
   const existingApp = getApps().find((app) => app.name === SECONDARY_APP_NAME);
@@ -41,6 +56,9 @@ export const formatMobilePassword = (mobileValue) => {
 };
 
 export const createStudentAuthUser = async (studentData) => {
+  if (isLocalDbMode()) {
+    return localCreateStudentAuthUser(studentData);
+  }
   const email = normalizeEmail(studentData?.email);
   const name = String(studentData?.name || "").trim();
   const mobilePassword = formatMobilePassword(studentData?.mobile);
@@ -56,11 +74,15 @@ export const createStudentAuthUser = async (studentData) => {
   }
 
   if (!mobilePassword) {
-    throw new Error("Valid mobile number is required for auth password creation");
+    throw new Error(
+      "Valid mobile number is required for auth password creation",
+    );
   }
 
   if (mobilePassword.length < 6) {
-    throw new Error("Mobile number must have at least 6 digits for auth password");
+    throw new Error(
+      "Mobile number must have at least 6 digits for auth password",
+    );
   }
 
   const secondaryAuth = getSecondaryAuth();
@@ -70,7 +92,9 @@ export const createStudentAuthUser = async (studentData) => {
       collection(db, STUDENT_USERS_COLLECTION),
       where("email", "==", email),
     );
-    const existingStudentUsersSnapshot = await getDocs(existingStudentUsersQuery);
+    const existingStudentUsersSnapshot = await getDocs(
+      existingStudentUsersQuery,
+    );
 
     if (!existingStudentUsersSnapshot.empty) {
       // Keep one entry for the email and remove any duplicate docs.
@@ -178,7 +202,9 @@ const pickAdminDocToReactivate = (docs, targetRole) => {
   const withRole = docs.filter(
     (userDoc) => String(userDoc.data()?.role || "") === String(targetRole),
   );
-  const activeWithRole = withRole.find((userDoc) => ACTIVE_FILTER(userDoc.data()));
+  const activeWithRole = withRole.find((userDoc) =>
+    ACTIVE_FILTER(userDoc.data()),
+  );
   if (activeWithRole) {
     return activeWithRole;
   }
@@ -217,7 +243,8 @@ const reactivateAdminByEmail = async ({
       name: String(name || "").trim(),
       email: normalizedEmail,
       role,
-      collegeCode: role === "collegeAdmin" ? String(collegeCode || "").trim() : "",
+      collegeCode:
+        role === "collegeAdmin" ? String(collegeCode || "").trim() : "",
       isActive: true,
       deletedAt: null,
       updatedAt: new Date(),
@@ -249,6 +276,9 @@ const reactivateAdminByEmail = async ({
 
 // Create a college admin user in both Firebase Auth and Firestore
 export const createCollegeAdmin = async (adminData, collegeCode) => {
+  if (isLocalDbMode()) {
+    return localCreateCollegeAdmin(adminData, collegeCode);
+  }
   const secondaryAuth = getSecondaryAuth();
   const normalizedEmail = normalizeEmail(adminData?.email);
 
@@ -298,6 +328,9 @@ export const createCollegeAdmin = async (adminData, collegeCode) => {
 
 // Create a super admin user in both Firebase Auth and Firestore
 export const createSuperAdmin = async (adminData) => {
+  if (isLocalDbMode()) {
+    return localCreateSuperAdmin(adminData);
+  }
   const secondaryAuth = getSecondaryAuth();
   const normalizedEmail = normalizeEmail(adminData?.email);
 
@@ -345,6 +378,9 @@ export const createSuperAdmin = async (adminData) => {
 
 // Get user by email
 export const getUserByEmail = async (email) => {
+  if (isLocalDbMode()) {
+    return localGetUserByEmail(email);
+  }
   try {
     // Note: Firestore doesn't have a direct "where email" query in basic setup
     // This is a limitation - you might want to add an index or use a different approach
@@ -358,6 +394,9 @@ export const getUserByEmail = async (email) => {
 
 // Get user by UID
 export const getUserByUID = async (uid) => {
+  if (isLocalDbMode()) {
+    return localGetUserByUID(uid);
+  }
   try {
     const docRef = doc(db, USERS_COLLECTION, uid);
     const docSnap = await getDoc(docRef);
@@ -380,6 +419,9 @@ export const getUserByUID = async (uid) => {
 
 // Get user by collegeCode
 export const getUserByCollegeCode = async (collegeCode) => {
+  if (isLocalDbMode()) {
+    return localGetUserByCollegeCode(collegeCode);
+  }
   try {
     const q = query(
       collection(db, USERS_COLLECTION),
@@ -408,6 +450,9 @@ export const getUserByCollegeCode = async (collegeCode) => {
 
 // Get all admins (superAdmin and collegeAdmin)
 export const getAllAdmins = async () => {
+  if (isLocalDbMode()) {
+    return localGetAllAdmins();
+  }
   try {
     const q = query(
       collection(db, USERS_COLLECTION),
@@ -433,6 +478,9 @@ export const getAllAdmins = async () => {
 
 // Update an admin user in Firestore
 export const updateAdmin = async (uid, updateData) => {
+  if (isLocalDbMode()) {
+    return localUpdateAdmin(uid, updateData);
+  }
   try {
     const docRef = doc(db, USERS_COLLECTION, uid);
     await updateDoc(docRef, updateData);
@@ -479,6 +527,9 @@ const softDeleteUserByUid = async (uid) => {
 
 // Soft delete a college admin user from Firestore
 export const deleteCollegeAdmin = async (uid) => {
+  if (isLocalDbMode()) {
+    return localDeleteCollegeAdmin(uid);
+  }
   try {
     await softDeleteUserByUid(uid);
     console.log("College admin soft deleted in Firestore:", uid);

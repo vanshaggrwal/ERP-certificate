@@ -19,6 +19,12 @@ import { getAllAdmins } from "../../../services/userService";
 import { getAllCertificates } from "../../../services/certificateService";
 import { getAllColleges } from "../../../services/collegeService";
 import { getAllProjectCodes } from "../../../services/projectCodeService";
+import { resetLocalDb } from "../../../services/localDbService";
+import {
+  DB_MODES,
+  getDbMode,
+  setDbMode,
+} from "../../../services/dbModeService";
 
 const SIDEBAR_BLUE = "#0B2A4A";
 const ACCENT_BLUE = "#1D5FA8";
@@ -28,7 +34,11 @@ const ROSE = "#CA5D7C";
 const COLORS = [ACCENT_BLUE, MINT, AMBER, ROSE];
 
 const parseProgress = (progressValue) => {
-  const parsed = Number(String(progressValue || "").replace("%", "").trim());
+  const parsed = Number(
+    String(progressValue || "")
+      .replace("%", "")
+      .trim(),
+  );
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
@@ -38,40 +48,79 @@ export default function Dashboard() {
   const [certifications, setCertifications] = useState([]);
   const [colleges, setColleges] = useState([]);
   const [projectCodes, setProjectCodes] = useState([]);
+  const [dbMode, setDbModeState] = useState(getDbMode());
+
+  const loadDashboardData = async () => {
+    try {
+      const [s, a, c, clg, pc] = await Promise.all([
+        getAllStudents(),
+        getAllAdmins(),
+        getAllCertificates(),
+        getAllColleges(),
+        getAllProjectCodes(),
+      ]);
+      setStudents(s || []);
+      setAdmins(a || []);
+      setCertifications(c || []);
+      setColleges(clg || []);
+      setProjectCodes(pc || []);
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
-      try {
-        const [s, a, c, clg, pc] = await Promise.all([
-          getAllStudents(),
-          getAllAdmins(),
-          getAllCertificates(),
-          getAllColleges(),
-          getAllProjectCodes(),
-        ]);
-        if (!mounted) return;
-        setStudents(s || []);
-        setAdmins(a || []);
-        setCertifications(c || []);
-        setColleges(clg || []);
-        setProjectCodes(pc || []);
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error);
-      }
+
+    const handleDbModeChange = (event) => {
+      const mode = event?.detail?.mode || getDbMode();
+      setDbModeState(mode);
+      if (!mounted) return;
+      loadDashboardData();
     };
-    load();
+
+    const handleLocalDbReset = () => {
+      if (!mounted) return;
+      loadDashboardData();
+    };
+
+    loadDashboardData();
+    window.addEventListener("erp:db-mode-changed", handleDbModeChange);
+    window.addEventListener("erp:local-db-reset", handleLocalDbReset);
+
     return () => {
       mounted = false;
+      window.removeEventListener("erp:db-mode-changed", handleDbModeChange);
+      window.removeEventListener("erp:local-db-reset", handleLocalDbReset);
     };
   }, []);
 
+  const handleToggleDbMode = () => {
+    const nextMode = dbMode === DB_MODES.LOCAL ? DB_MODES.PROD : DB_MODES.LOCAL;
+    setDbMode(nextMode);
+  };
+
+  const handleResetLocalDb = async () => {
+    const confirmed = window.confirm(
+      "This will clear all Local DB test data. Continue?",
+    );
+    if (!confirmed) return;
+    await resetLocalDb();
+    if (dbMode === DB_MODES.LOCAL) {
+      await loadDashboardData();
+    }
+  };
+
   const totalStudents = students.length;
   const totalColleges = colleges.length;
-  const activeColleges = colleges.filter((college) => String(college.status || "Active") === "Active").length;
+  const activeColleges = colleges.filter(
+    (college) => String(college.status || "Active") === "Active",
+  ).length;
   const totalProjectCodes = projectCodes.length;
   const totalCertificates = certifications.length;
-  const totalCollegeAdmins = admins.filter((admin) => admin.role === "College Admin").length;
+  const totalCollegeAdmins = admins.filter(
+    (admin) => admin.role === "College Admin",
+  ).length;
 
   const studentsByProject = Object.entries(
     students.reduce((accumulator, student) => {
@@ -119,20 +168,66 @@ export default function Dashboard() {
 
   return (
     <SuperAdminLayout>
+      <section className="mb-4 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={handleResetLocalDb}
+          className="rounded-lg border border-[#D7E2F1] bg-white px-4 py-2 text-sm font-semibold text-[#0B2A4A] shadow-sm hover:bg-[#F5F9FF]"
+        >
+          Reset Local DB
+        </button>
+        <button
+          type="button"
+          onClick={handleToggleDbMode}
+          className="rounded-lg border border-[#D7E2F1] bg-white px-4 py-2 text-sm font-semibold text-[#0B2A4A] shadow-sm hover:bg-[#F5F9FF]"
+        >
+          DB Mode: {dbMode === DB_MODES.LOCAL ? "Local" : "Production"}
+        </button>
+      </section>
+
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={<Users size={18} />} label="Total Students" value={totalStudents} helper="Across all project groups" />
-        <MetricCard icon={<Building2 size={18} />} label="Active Colleges" value={`${activeColleges}/${totalColleges}`} helper="Current institution status" />
-        <MetricCard icon={<GraduationCap size={18} />} label="Project Codes" value={totalProjectCodes} helper="Configured for batches" />
-        <MetricCard icon={<BookOpenCheck size={18} />} label="Certificates" value={totalCertificates} helper={`${totalCollegeAdmins} college admins assigned`} />
+        <MetricCard
+          icon={<Users size={18} />}
+          label="Total Students"
+          value={totalStudents}
+          helper="Across all project groups"
+        />
+        <MetricCard
+          icon={<Building2 size={18} />}
+          label="Active Colleges"
+          value={`${activeColleges}/${totalColleges}`}
+          helper="Current institution status"
+        />
+        <MetricCard
+          icon={<GraduationCap size={18} />}
+          label="Project Codes"
+          value={totalProjectCodes}
+          helper="Configured for batches"
+        />
+        <MetricCard
+          icon={<BookOpenCheck size={18} />}
+          label="Certificates"
+          value={totalCertificates}
+          helper={`${totalCollegeAdmins} college admins assigned`}
+        />
       </section>
 
       <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1.6fr_1fr]">
         <ChartCard title="Progress Breakdown">
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
-              <Pie data={progressBuckets} dataKey="count" nameKey="bucket" innerRadius={52} outerRadius={82}>
+              <Pie
+                data={progressBuckets}
+                dataKey="count"
+                nameKey="bucket"
+                innerRadius={52}
+                outerRadius={82}
+              >
                 {progressBuckets.map((entry, index) => (
-                  <Cell key={entry.bucket} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={entry.bucket}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip />
@@ -191,8 +286,12 @@ export default function Dashboard() {
 
         <section className="rounded-2xl border border-[#D7E2F1] bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[#0B2A4A]">Top Performing Students</h2>
-            <span className="text-xs text-gray-500">Based on progress percentage</span>
+            <h2 className="text-lg font-semibold text-[#0B2A4A]">
+              Top Performing Students
+            </h2>
+            <span className="text-xs text-gray-500">
+              Based on progress percentage
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -207,7 +306,10 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {topStudents.map((student) => (
-                  <tr key={student.id} className="border-b border-gray-100 text-gray-800">
+                  <tr
+                    key={student.id}
+                    className="border-b border-gray-100 text-gray-800"
+                  >
                     <td className="px-2 py-2 font-medium">{student.name}</td>
                     <td className="px-2 py-2">{student.projectId}</td>
                     <td className="px-2 py-2">{student.certificate || "-"}</td>
@@ -229,7 +331,9 @@ function MetricCard({ icon, label, value, helper }) {
     <div className="rounded-2xl border border-[#D7E2F1] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-[#0B2A4A]/70">{label}</p>
-        <span className="rounded-lg bg-[#0B2A4A]/10 p-2 text-[#0B2A4A]">{icon}</span>
+        <span className="rounded-lg bg-[#0B2A4A]/10 p-2 text-[#0B2A4A]">
+          {icon}
+        </span>
       </div>
       <p className="mt-2 text-3xl font-semibold text-[#0B2A4A]">{value}</p>
       <p className="mt-1 text-xs text-gray-500">{helper}</p>

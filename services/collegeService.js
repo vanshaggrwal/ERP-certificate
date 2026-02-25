@@ -11,11 +11,25 @@ import {
   writeBatch,
   setDoc,
 } from "firebase/firestore";
+import { isLocalDbMode } from "./dbModeService";
+import {
+  localAddCollege,
+  localCollegeExists,
+  localDeleteCollege,
+  localGetAllColleges,
+  localGetCollegeByCode,
+  localGetCollegeByName,
+  localSeedColleges,
+  localUpdateCollege,
+} from "./localDbService";
 
 const COLLEGES_COLLECTION = "college";
 
 // Add a single college to Firestore with college_code as document ID
 export const addCollege = async (collegeData) => {
+  if (isLocalDbMode()) {
+    return localAddCollege(collegeData);
+  }
   try {
     const collegeCode = collegeData.college_code;
     const docRef = doc(db, COLLEGES_COLLECTION, collegeCode);
@@ -34,6 +48,9 @@ export const addCollege = async (collegeData) => {
 
 // Seed multiple colleges to Firestore (batch add with college_code as document ID)
 export const seedColleges = async (collegesData) => {
+  if (isLocalDbMode()) {
+    return localSeedColleges(collegesData);
+  }
   try {
     const batch = writeBatch(db);
 
@@ -58,6 +75,9 @@ export const seedColleges = async (collegesData) => {
 
 // Get all colleges
 export const getAllColleges = async () => {
+  if (isLocalDbMode()) {
+    return localGetAllColleges();
+  }
   try {
     const querySnapshot = await getDocs(collection(db, COLLEGES_COLLECTION));
     const colleges = [];
@@ -76,6 +96,9 @@ export const getAllColleges = async () => {
 
 // Get college by college_code (document ID)
 export const getCollegeByCode = async (collegeCode) => {
+  if (isLocalDbMode()) {
+    return localGetCollegeByCode(collegeCode);
+  }
   try {
     const docRef = doc(db, COLLEGES_COLLECTION, collegeCode);
     const docSnap = await getDoc(docRef);
@@ -96,6 +119,9 @@ export const getCollegeByCode = async (collegeCode) => {
 
 // Update college
 export const updateCollege = async (collegeCode, updateData) => {
+  if (isLocalDbMode()) {
+    return localUpdateCollege(collegeCode, updateData);
+  }
   try {
     const docRef = doc(db, COLLEGES_COLLECTION, collegeCode);
     await updateDoc(docRef, {
@@ -113,6 +139,9 @@ export const updateCollege = async (collegeCode, updateData) => {
 
 // Delete college
 export const deleteCollege = async (collegeCode) => {
+  if (isLocalDbMode()) {
+    return localDeleteCollege(collegeCode);
+  }
   try {
     await deleteDoc(doc(db, COLLEGES_COLLECTION, collegeCode));
     console.log("College deleted:", collegeCode);
@@ -125,6 +154,9 @@ export const deleteCollege = async (collegeCode) => {
 
 // Check if college exists
 export const collegeExists = async (collegeCode) => {
+  if (isLocalDbMode()) {
+    return localCollegeExists(collegeCode);
+  }
   try {
     const docRef = doc(db, COLLEGES_COLLECTION, collegeCode);
     const docSnap = await getDoc(docRef);
@@ -137,6 +169,9 @@ export const collegeExists = async (collegeCode) => {
 
 // Get college by college name
 export const getCollegeByName = async (collegeName) => {
+  if (isLocalDbMode()) {
+    return localGetCollegeByName(collegeName);
+  }
   try {
     const q = query(
       collection(db, COLLEGES_COLLECTION),

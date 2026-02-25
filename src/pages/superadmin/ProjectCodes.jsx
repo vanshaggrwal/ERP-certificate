@@ -38,6 +38,16 @@ const normalizeCollegeCode = (value) => sanitizeValue(value).toUpperCase();
 const normalizeProjectCode = (value) =>
   sanitizePathLikePart(value).toUpperCase();
 
+const COURSE_CODE_ALIASES = {
+  ENGINEERING: "ENGG",
+  ENGG: "ENGG",
+};
+
+const getCourseCodeSegment = (courseValue) => {
+  const normalizedCourse = sanitizePathLikePart(courseValue).toUpperCase();
+  return COURSE_CODE_ALIASES[normalizedCourse] || normalizedCourse;
+};
+
 const getShortAcademicYear = (passingYear) => {
   const cleaned = sanitizeValue(passingYear);
   const match = cleaned.match(/^(\d{4})\s*-\s*(\d{4})$/);
@@ -47,7 +57,7 @@ const getShortAcademicYear = (passingYear) => {
 
 const buildProjectCodeFromRow = (row) => {
   const collegeCode = sanitizePathLikePart(row["College Code"]).toUpperCase();
-  const course = sanitizePathLikePart(row.Course);
+  const course = getCourseCodeSegment(row.Course);
   const year = sanitizePathLikePart(row.Year);
   const trainingType = sanitizePathLikePart(row["Training Type"]).toUpperCase();
   const shortAcademicYear = getShortAcademicYear(row["Passing Year"]);
