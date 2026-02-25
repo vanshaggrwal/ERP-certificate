@@ -22,6 +22,37 @@ const getCurrentYearFromProjectCode = (projectCodeValue) => {
   return "";
 };
 
+const toCanonicalKey = (label) => {
+  const normalized = String(label || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[%._-]/g, " ")
+    .replace(/\s+/g, " ");
+
+  const aliases = {
+    "STUDENT NAME": "FULL NAME OF STUDENT",
+    "ROLL NO": "SN",
+    PHONE: "MOBILE NO",
+    "DATE OF BIRTH": "BIRTH DATE",
+    "10TH PERCENTAGE": "10TH OVERALL MARKS",
+    "12TH PERCENTAGE": "12TH OVERALL MARKS",
+  };
+
+  return aliases[normalized] || normalized;
+};
+
+const getUniqueEntries = (entries, seenKeys) => {
+  const result = [];
+  entries.forEach(([label, value]) => {
+    if (String(value ?? "").trim() === "") return;
+    const canonicalKey = toCanonicalKey(label);
+    if (seenKeys.has(canonicalKey)) return;
+    seenKeys.add(canonicalKey);
+    result.push([label, value]);
+  });
+  return result;
+};
+
 export default function StudentProfile() {
   const { user, profile } = useAuth();
   const [student, setStudent] = useState(null);
@@ -60,19 +91,18 @@ export default function StudentProfile() {
   const officialDetails = student?.OFFICIAL_DETAILS || {};
   const tenthDetails = student?.TENTH_DETAILS || {};
   const twelfthDetails = student?.TWELFTH_DETAILS || {};
+  const diplomaDetails = student?.DIPLOMA_DETAILS || {};
   const graduationDetails = student?.GRADUATION_DETAILS || {};
+  const postGraduationDetails = student?.POST_GRADUATION_DETAILS || {};
 
   const fullName = officialDetails["FULL NAME OF STUDENT"] || student?.name || "-";
   const rollNo = officialDetails.SN || student?.id || "-";
   const gender = officialDetails.GENDER || student?.gender || "-";
   const dob = officialDetails["BIRTH DATE"] || student?.dob || "-";
-  const collegeCode =
-    String(student?.collegeCode || "").trim() ||
-    String(student?.projectId || "").split(/[-/]/)[0]?.trim() ||
-    "-";
 
   const email = officialDetails["EMAIL ID"] || student?.email || "-";
   const phone = officialDetails["MOBILE NO."] || student?.phone || "-";
+  const hometown = officialDetails.HOMETOWN || "-";
   const passingYear =
     graduationDetails["GRADUATION PASSING YR"] ||
     student?.passingYear ||
@@ -81,8 +111,29 @@ export default function StudentProfile() {
   const structuredProjectCode = student?.projectCode || student?.projectId || "";
   const currentYearFromCode = getCurrentYearFromProjectCode(structuredProjectCode);
   const currentYear = currentYearFromCode || student?.currentSemester || "-";
-  const tenthPercentage = student?.tenthPercentage ?? tenthDetails["10th OVERALL MARKS %"] ?? "-";
-  const twelfthPercentage = student?.twelfthPercentage ?? twelfthDetails["12th OVERALL MARKS %"] ?? "-";
+  const seenKeys = new Set(
+    [
+      "STUDENT NAME",
+      "ROLL NO",
+      "GENDER",
+      "DATE OF BIRTH",
+      "EMAIL",
+      "PHONE",
+      "PASSING YEAR",
+      "CURRENT YEAR",
+      "10TH PERCENTAGE",
+      "12TH PERCENTAGE",
+    ].map(toCanonicalKey),
+  );
+
+  const filteredTenthEntries = getUniqueEntries(Object.entries(tenthDetails), seenKeys);
+  const filteredTwelfthEntries = getUniqueEntries(Object.entries(twelfthDetails), seenKeys);
+  const filteredDiplomaEntries = getUniqueEntries(Object.entries(diplomaDetails), seenKeys);
+  const filteredGraduationEntries = getUniqueEntries(Object.entries(graduationDetails), seenKeys);
+  const filteredPostGraduationEntries = getUniqueEntries(
+    Object.entries(postGraduationDetails),
+    seenKeys,
+  );
 
   const handlePasswordFieldChange = (event) => {
     const { name, value } = event.target;
@@ -176,45 +227,52 @@ export default function StudentProfile() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <section className="rounded-3xl bg-[#0B2A4A] p-6 text-white shadow-sm">
-        <h1 className="text-2xl font-semibold">Student Profile</h1>
-        <p className="mt-1 text-sm text-white/90">Manage your academic and certification details.</p>
+    <div className="mx-auto w-full max-w-6xl space-y-6 pb-6">
+      <section className="rounded-3xl border border-[#D6E1EE] bg-white p-6 shadow-sm">
+        <h1 className="text-3xl font-semibold text-[#0B2A4A]">Student Profile</h1>
+        <p className="mt-1 text-sm text-gray-500">Manage your details and academic information.</p>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Basic Information</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">Basic Information</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ProfileItem label="Student Name" value={fullName} />
           <ProfileItem label="Roll No" value={rollNo} />
           <ProfileItem label="Gender" value={gender} />
           <ProfileItem label="Date of Birth" value={dob} />
-          <ProfileItem label="College" value={collegeCode} />
+          <ProfileItem label="Current Year" value={currentYear} />
+          <ProfileItem label="Passing Year" value={passingYear} />
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Contact & Academic Details</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">Contact Details</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ProfileItem label="Email" value={email} />
           <ProfileItem label="Phone" value={phone} />
-          <ProfileItem label="Passing Year" value={passingYear} />
-          <ProfileItem label="Current Year" value={currentYear} />
-          <ProfileItem label="10th Percentage" value={tenthPercentage === "-" ? "-" : `${tenthPercentage}%`} />
-          <ProfileItem label="12th Percentage" value={twelfthPercentage === "-" ? "-" : `${twelfthPercentage}%`} />
+          <ProfileItem label="Hometown" value={hometown} />
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Change Password</h2>
+      <DetailsSection title="10th Details" entries={filteredTenthEntries} />
+      <DetailsSection title="12th Details" entries={filteredTwelfthEntries} />
+      <DetailsSection title="Diploma Details" entries={filteredDiplomaEntries} />
+      <DetailsSection title="Graduation Details" entries={filteredGraduationEntries} />
+      <DetailsSection
+        title="Post Graduation Details"
+        entries={filteredPostGraduationEntries}
+      />
+
+      <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">Change Password</h2>
 
         {passwordError && (
-          <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
             {passwordError}
           </p>
         )}
         {passwordSuccess && (
-          <p className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p className="mb-3 rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
             {passwordSuccess}
           </p>
         )}
@@ -227,7 +285,7 @@ export default function StudentProfile() {
               name="currentPassword"
               value={passwordForm.currentPassword}
               onChange={handlePasswordFieldChange}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1D5FA8]"
+              className="w-full rounded-xl border border-gray-300 bg-[#F8FAFC] px-3 py-2 text-sm outline-none transition focus:border-[#1D5FA8] focus:bg-white"
               autoComplete="current-password"
             />
           </label>
@@ -239,7 +297,7 @@ export default function StudentProfile() {
               name="newPassword"
               value={passwordForm.newPassword}
               onChange={handlePasswordFieldChange}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1D5FA8]"
+              className="w-full rounded-xl border border-gray-300 bg-[#F8FAFC] px-3 py-2 text-sm outline-none transition focus:border-[#1D5FA8] focus:bg-white"
               autoComplete="new-password"
             />
           </label>
@@ -251,7 +309,7 @@ export default function StudentProfile() {
               name="confirmPassword"
               value={passwordForm.confirmPassword}
               onChange={handlePasswordFieldChange}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1D5FA8]"
+              className="w-full rounded-xl border border-gray-300 bg-[#F8FAFC] px-3 py-2 text-sm outline-none transition focus:border-[#1D5FA8] focus:bg-white"
               autoComplete="new-password"
             />
           </label>
@@ -276,10 +334,32 @@ export default function StudentProfile() {
 
 function ProfileItem({ label, value }) {
   return (
-    <div className="rounded-xl bg-gray-100 p-5">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-gray-900">{value || "-"}</p>
+    <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4 shadow-sm transition hover:border-[#BCD0E7]">
+      <p className="text-xs uppercase tracking-wide text-[#0B2A4A]/60">{label}</p>
+      <p className="mt-1 text-base font-semibold text-[#0B2A4A]">{value || "-"}</p>
     </div>
   );
 }
+
+function DetailsSection({ title, entries }) {
+  const filteredEntries = entries.filter(
+    ([, value]) => String(value ?? "").trim() !== "",
+  );
+
+  if (filteredEntries.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">{title}</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {filteredEntries.map(([label, value]) => (
+          <ProfileItem key={`${title}-${label}`} label={label} value={value} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
  

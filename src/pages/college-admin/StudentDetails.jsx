@@ -61,7 +61,10 @@ export default function StudentDetails() {
           <Detail label="Admission Year" value={student.admissionYear} />
           <Detail label="Current Semester" value={student.currentSemester} />
           <Detail label="10th Percentage" value={`${student.tenthPercentage}%`} />
-          <Detail label="12th Percentage" value={`${student.twelfthPercentage}%`} />
+          <Detail
+            label="12th / Diploma Percentage"
+            value={student.twelfthPercentage ? `${student.twelfthPercentage}%` : "-"}
+          />
         </Section>
 
         {/* CERTIFICATION INFO */}

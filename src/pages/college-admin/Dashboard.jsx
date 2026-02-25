@@ -120,9 +120,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl bg-[#0B2A4A] px-6 py-7 text-white shadow-sm">
-        <h1 className="text-2xl font-semibold">College Admin Control Center</h1>
-        <p className="mt-1 text-sm text-white/90">
+      <section className="rounded-3xl border border-[#D7E2F1] bg-white px-6 py-7 shadow-sm">
+        <h1 className="text-2xl font-semibold text-[#0B2A4A]">College Admin Control Center</h1>
+        <p className="mt-1 text-sm text-gray-600">
           Monitor enrollments, performance trends, and certification health.
         </p>
       </section>
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
             {data.topProjects.map((project) => (
               <div
                 key={project.id || project.code}
-                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+                className="rounded-xl border border-[#D7E2F1] bg-[#F7FAFF] px-4 py-3"
               >
                 <p className="text-sm font-semibold text-gray-900">{project.code || project.id}</p>
                 <p className="text-xs text-gray-600">{project.course}</p>
@@ -223,20 +223,20 @@ export default function AdminDashboard() {
 
 function StatCard({ title, value, icon }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#D7E2F1] bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-sm text-[#0B2A4A]/70">{title}</p>
         <span className="rounded-lg bg-[#0B2A4A]/10 p-2 text-[#0B2A4A]">{icon}</span>
       </div>
-      <h2 className="mt-2 text-2xl font-semibold text-gray-900">{value}</h2>
+      <h2 className="mt-2 text-2xl font-semibold text-[#0B2A4A]">{value}</h2>
     </div>
   );
 }
 
 function Panel({ title, children }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-4 text-base font-semibold text-gray-900">{title}</h3>
+    <div className="rounded-2xl border border-[#D7E2F1] bg-white p-5 shadow-sm">
+      <h3 className="mb-4 text-base font-semibold text-[#0B2A4A]">{title}</h3>
       {children}
     </div>
   );

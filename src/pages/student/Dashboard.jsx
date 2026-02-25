@@ -51,6 +51,7 @@ export default function StudentDashboard() {
   const officialDetails = currentStudent?.OFFICIAL_DETAILS || {};
   const tenthDetails = currentStudent?.TENTH_DETAILS || {};
   const twelfthDetails = currentStudent?.TWELFTH_DETAILS || {};
+  const diplomaDetails = currentStudent?.DIPLOMA_DETAILS || {};
   const graduationDetails = currentStudent?.GRADUATION_DETAILS || {};
   const fullName = officialDetails["FULL NAME OF STUDENT"] || currentStudent?.name || "-";
   const rollNo = officialDetails.SN || currentStudent?.id || "-";
@@ -70,7 +71,10 @@ export default function StudentDashboard() {
   const tenthPercentage =
     currentStudent?.tenthPercentage ?? tenthDetails["10th OVERALL MARKS %"] ?? "-";
   const twelfthPercentage =
-    currentStudent?.twelfthPercentage ?? twelfthDetails["12th OVERALL MARKS %"] ?? "-";
+    currentStudent?.twelfthPercentage ??
+    twelfthDetails["12th OVERALL MARKS %"] ??
+    diplomaDetails["DIPLOMA OVERALL MARKS %"] ??
+    "-";
 
   useEffect(() => {
     let mounted = true;
@@ -144,7 +148,18 @@ export default function StudentDashboard() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
+      <section className="rounded-3xl border border-[#D7E2F1] bg-white p-5 shadow-sm sm:p-6">
+        <div>
+          <div>
+            <h1 className="text-2xl font-semibold text-[#0B2A4A] sm:text-3xl">Student Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Track your enrolled certificates and academic snapshot in one place.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Enrolled" value={statusSummary.enrolled} icon={<Award size={18} />} />
         <StatCard label="Passed" value={statusSummary.passed} icon={<BookOpenCheck size={18} />} />
@@ -152,7 +167,7 @@ export default function StudentDashboard() {
         <StatCard label="Current Year" value={currentYear} icon={<Clock3 size={18} />} />
       </section>
 
-      <section className="rounded-3xl border border-[#D7E2F1] bg-[#EEF3FA] p-5 sm:p-6">
+      <section className="rounded-3xl border border-[#D7E2F1] bg-[#EEF3FA] p-5 shadow-sm sm:p-6">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
           <div className="space-y-3">
             <h3 className="text-2xl font-semibold text-[#0B2A4A]">Learning that drives results</h3>
@@ -161,7 +176,7 @@ export default function StudentDashboard() {
             </p>
             <button
               type="button"
-              className="rounded-xl border border-[#1D5FA8] px-4 py-2 text-sm font-semibold text-[#1D5FA8]"
+              className="rounded-xl border border-[#1D5FA8] bg-white px-4 py-2 text-sm font-semibold text-[#1D5FA8]"
             >
               {enrolledCertificates.length} enrolled
             </button>
@@ -169,7 +184,7 @@ export default function StudentDashboard() {
 
           <div className="flex gap-4 overflow-x-auto pb-2">
             {certLoading ? (
-              <div className="flex min-h-[220px] w-full items-center justify-center rounded-2xl border border-gray-200 bg-white text-sm text-gray-500">
+              <div className="flex min-h-[220px] w-full items-center justify-center rounded-2xl border border-[#D7E2F1] bg-white text-sm text-gray-500">
                 Loading certificates...
               </div>
             ) : enrolledCertificates.length > 0 ? (
@@ -180,7 +195,7 @@ export default function StudentDashboard() {
                 />
               ))
             ) : (
-              <div className="flex min-h-[220px] w-full items-center justify-center rounded-2xl border border-gray-200 bg-white text-sm text-gray-500">
+              <div className="flex min-h-[220px] w-full items-center justify-center rounded-2xl border border-[#D7E2F1] bg-white text-sm text-gray-500">
                 No enrolled certificates found.
               </div>
             )}
@@ -190,8 +205,8 @@ export default function StudentDashboard() {
 
       <section className="grid grid-cols-1 gap-6">
         <Panel title="Profile Snapshot">
-          <div className="space-y-5">
-            <div className="rounded-2xl bg-[#0B2A4A] p-4 text-white">
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-[#0B2A4A] p-4 text-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/90 text-lg font-bold text-[#0B2A4A]">
@@ -215,11 +230,10 @@ export default function StudentDashboard() {
               <SnapshotItem label="Passing Year" value={passingYear} />
               <SnapshotItem label="Email" value={email} />
               <SnapshotItem label="Phone" value={phone} />
-              <SnapshotItem label="Current Year" value={currentYear} />
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4">
+              <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4 shadow-sm">
                 <p className="text-xs uppercase tracking-wide text-[#0B2A4A]/70">
                   10th Percentage
                 </p>
@@ -227,9 +241,9 @@ export default function StudentDashboard() {
                   {tenthPercentage !== "-" ? `${tenthPercentage}%` : "-"}
                 </p>
               </div>
-              <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4">
+              <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4 shadow-sm">
                 <p className="text-xs uppercase tracking-wide text-[#0B2A4A]/70">
-                  12th Percentage
+                  12th / Diploma Percentage
                 </p>
                 <p className="mt-1 text-2xl font-semibold text-[#0B2A4A]">
                   {twelfthPercentage !== "-" ? `${twelfthPercentage}%` : "-"}
@@ -245,20 +259,20 @@ export default function StudentDashboard() {
 
 function StatCard({ label, value, icon }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-[#D7E2F1] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{label}</p>
-        <span className="rounded-lg bg-[#0B2A4A]/10 p-2 text-[#0B2A4A]">{icon}</span>
+        <p className="text-sm font-medium text-[#0B2A4A]/70">{label}</p>
+        <span className="rounded-lg bg-[#EEF3FA] p-2 text-[#0B2A4A]">{icon}</span>
       </div>
-      <p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="mt-2 text-2xl font-semibold text-[#0B2A4A]">{value}</p>
     </div>
   );
 }
 
 function Panel({ title, children }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-4 text-base font-semibold text-gray-900">{title}</h3>
+    <div className="rounded-2xl border border-[#D7E2F1] bg-white p-5 shadow-sm">
+      <h3 className="mb-4 text-lg font-semibold text-[#0B2A4A]">{title}</h3>
       {children}
     </div>
   );
@@ -266,9 +280,9 @@ function Panel({ title, children }) {
 
 function SnapshotItem({ label, value }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-gray-900">{value || "-"}</p>
+    <div className="rounded-xl border border-[#D7E2F1] bg-[#F7FAFF] p-3 shadow-sm">
+      <p className="text-[11px] uppercase tracking-wide text-[#0B2A4A]/60">{label}</p>
+      <p className="mt-1 text-base font-semibold text-[#0B2A4A]">{value || "-"}</p>
     </div>
   );
 }
@@ -283,12 +297,14 @@ function CertificateCard({ certificate }) {
         : "bg-[#0B2A4A]/10 text-[#0B2A4A]";
 
   return (
-    <article className="min-w-[270px] max-w-[290px] flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="h-24 bg-[#0B2A4A]" />
+    <article className="min-w-[270px] max-w-[300px] flex-1 overflow-hidden rounded-2xl border border-[#D7E2F1] bg-white shadow-sm">
+      <div className="h-24 bg-[#0B2A4A] px-4 py-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-white/80">Certificate</p>
+      </div>
       <div className="space-y-3 p-4">
         <div>
-          <p className="text-xs text-gray-500">{certificate.platform}</p>
-          <h4 className="mt-1 text-lg font-semibold text-gray-900">{certificate.name}</h4>
+          <p className="text-xs text-[#0B2A4A]/70">{certificate.platform}</p>
+          <h4 className="mt-1 text-lg font-semibold text-[#0B2A4A]">{certificate.name}</h4>
           <p className="mt-1 text-xs text-gray-600">{certificate.level}</p>
         </div>
 

@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* Shared design baseline for a uniform portal UI */
+:root {
+  --app-bg: #f3f6fa;
+  --surface: #ffffff;
+  --surface-soft: #eef3fa;
+  --line: #d7e2f1;
+  --text-strong: #0b2a4a;
+}
+
 body {
+  background: var(--app-bg);
+  color: #1f2937;
   overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
 }

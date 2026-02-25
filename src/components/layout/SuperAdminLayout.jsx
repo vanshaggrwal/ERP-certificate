@@ -7,7 +7,7 @@ export default function SuperAdminLayout({ children }) {
   const hideTopbar = location.pathname === "/superadmin/profile";
 
   return (
-    <div className="flex h-screen bg-[#eef3f8]">
+    <div className="flex h-screen bg-[#F3F6FA]">
       <Sidebar />
 
       <div className="flex min-w-0 flex-1 flex-col">

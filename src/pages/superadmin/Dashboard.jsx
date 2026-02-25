@@ -189,9 +189,9 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-[#D7E2F1] bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Top Performing Students</h2>
+            <h2 className="text-lg font-semibold text-[#0B2A4A]">Top Performing Students</h2>
             <span className="text-xs text-gray-500">Based on progress percentage</span>
           </div>
           <div className="overflow-x-auto">
@@ -226,12 +226,12 @@ export default function Dashboard() {
 
 function MetricCard({ icon, label, value, helper }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-[#D7E2F1] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-600">{label}</p>
+        <p className="text-sm font-medium text-[#0B2A4A]/70">{label}</p>
         <span className="rounded-lg bg-[#0B2A4A]/10 p-2 text-[#0B2A4A]">{icon}</span>
       </div>
-      <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
+      <p className="mt-2 text-3xl font-semibold text-[#0B2A4A]">{value}</p>
       <p className="mt-1 text-xs text-gray-500">{helper}</p>
     </div>
   );
@@ -239,8 +239,8 @@ function MetricCard({ icon, label, value, helper }) {
 
 function ChartCard({ title, children }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-2 text-base font-semibold text-gray-900">{title}</h2>
+    <div className="rounded-2xl border border-[#D7E2F1] bg-white p-4 shadow-sm">
+      <h2 className="mb-2 text-base font-semibold text-[#0B2A4A]">{title}</h2>
       {children}
     </div>
   );

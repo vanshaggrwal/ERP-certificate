@@ -55,7 +55,7 @@ import StudentProfile from "./pages/student/Profile";
     <div className="flex min-h-screen">
       <CollegeAdminSidebar />
 
-      <div className="flex-1 bg-gray-100 flex flex-col">
+      <div className="flex flex-1 flex-col bg-[#F3F6FA]">
         {!hideNavbar && <CollegeAdminNavbar />}
         <main className="p-8 flex-1">
           <Outlet />
