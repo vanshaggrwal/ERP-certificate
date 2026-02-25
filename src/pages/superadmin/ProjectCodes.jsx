@@ -1,15 +1,16 @@
 import { useState } from "react";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
-import { projectCodes } from "../../data/projectCodes";
-import ProjectCodeRow from "../../components/superadmin/ProjectCodeRow";
+// import { projectCodes } from "../../data/projectCodes";
+// import ProjectCodeRow from "../../components/superadmin/ProjectCodeRow";
 import { RefreshCcw, Upload } from "lucide-react";
 
 export default function ProjectCodes() {
   const [search, setSearch] = useState("");
 
-  const filtered = projectCodes.filter((p) =>
-    p.code.toLowerCase().includes(search.toLowerCase())
-  );
+  // const filtered = projectCodes.filter((p) =>
+  //   p.code.toLowerCase().includes(search.toLowerCase())
+  // );
+  const filtered = [];
 
   return (
     <SuperAdminLayout>
@@ -18,9 +19,7 @@ export default function ProjectCodes() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-semibold">Project Codes</h1>
-            <p className="text-gray-500 text-sm">
-              Manage your feedback system
-            </p>
+            <p className="text-gray-500 text-sm">Manage your feedback system</p>
           </div>
 
           <button className="flex items-center gap-2 px-4 py-2 bg-[#0B2A4A] text-white rounded-lg">
@@ -69,9 +68,9 @@ export default function ProjectCodes() {
             </thead>
 
             <tbody>
-              {filtered.map((row) => (
+              {/* {filtered.map((row) => (
                 <ProjectCodeRow key={row.id} row={row} />
-              ))}
+              ))} */}
             </tbody>
           </table>
         </div>
