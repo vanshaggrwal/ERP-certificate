@@ -1,10 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
-import { getStudentByDocId } from "../../../services/studentService";
+import {
+  getStudentByDocId,
+  getStudentByProjectAndId,
+} from "../../../services/studentService";
 import { getCertificatesByIds } from "../../../services/certificateService";
 
+const toCanonicalKey = (label) =>
+  String(label || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[%._-]/g, " ")
+    .replace(/\s+/g, " ");
+
+const getUniqueEntries = (entries, seenKeys) => {
+  const result = [];
+  entries.forEach(([label, value]) => {
+    if (String(value ?? "").trim() === "") return;
+    const canonicalKey = toCanonicalKey(label);
+    if (seenKeys.has(canonicalKey)) return;
+    seenKeys.add(canonicalKey);
+    result.push([label, value]);
+  });
+  return result;
+};
+
 export default function StudentCertificateProgress() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { studentDocId } = useParams();
 
@@ -18,7 +41,22 @@ export default function StudentCertificateProgress() {
       setLoading(true);
       setError("");
 
-      const studentData = await getStudentByDocId(studentDocId);
+      const projectCodeFromState = String(
+        location.state?.projectCode || "",
+      ).trim();
+      let studentData = null;
+
+      if (projectCodeFromState && studentDocId) {
+        studentData = await getStudentByProjectAndId(
+          projectCodeFromState,
+          studentDocId,
+        );
+      }
+
+      if (!studentData) {
+        studentData = await getStudentByDocId(studentDocId);
+      }
+
       if (!studentData) {
         setError("Student not found");
         return;
@@ -37,7 +75,7 @@ export default function StudentCertificateProgress() {
     } finally {
       setLoading(false);
     }
-  }, [studentDocId]);
+  }, [studentDocId, location.state]);
 
   useEffect(() => {
     fetchStudentData();
@@ -60,40 +98,149 @@ export default function StudentCertificateProgress() {
 
           {!loading && !error && student && (
             <>
-              <section className="rounded-2xl bg-gray-300 p-6">
-                <h1 className="text-2xl font-semibold text-gray-900">Student Certificate Progress</h1>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-600">Student Name</p>
-                    <p className="text-base font-medium text-gray-900">{student.name || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-600">Roll No.</p>
-                    <p className="text-base font-medium text-gray-900">{student.id || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-600">Project Code</p>
-                    <p className="text-base font-medium text-gray-900">{student.projectId || "-"}</p>
-                  </div>
-                </div>
+              <section className="rounded-3xl border border-[#D6E1EE] bg-white p-6 shadow-sm">
+                <h1 className="text-3xl font-semibold text-[#0B2A4A]">
+                  Student Profile
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Complete academic and personal details for this student.
+                </p>
               </section>
 
-              <section className="rounded-2xl bg-gray-300 p-6">
-                <h2 className="mb-4 text-xl font-semibold text-gray-900">Enrolled Certificates</h2>
+              {(() => {
+                const officialDetails = student?.OFFICIAL_DETAILS || {};
+                const tenthDetails = student?.TENTH_DETAILS || {};
+                const twelfthDetails = student?.TWELFTH_DETAILS || {};
+                const diplomaDetails = student?.DIPLOMA_DETAILS || {};
+                const graduationDetails = student?.GRADUATION_DETAILS || {};
+                const postGraduationDetails =
+                  student?.POST_GRADUATION_DETAILS || {};
+
+                const fullName =
+                  officialDetails["FULL NAME OF STUDENT"] ||
+                  student?.name ||
+                  "-";
+                const rollNo = officialDetails.SN || student?.id || "-";
+                const gender = officialDetails.GENDER || student?.gender || "-";
+                const dob =
+                  officialDetails["BIRTH DATE"] || student?.dob || "-";
+
+                const email =
+                  officialDetails["EMAIL ID"] || student?.email || "-";
+                const phone =
+                  officialDetails["MOBILE NO."] || student?.phone || "-";
+                const hometown = officialDetails.HOMETOWN || "-";
+                const passingYear =
+                  graduationDetails["GRADUATION PASSING YR"] ||
+                  student?.passingYear ||
+                  student?.admissionYear ||
+                  "-";
+                const currentYear = student?.currentSemester || "-";
+
+                const seenKeys = new Set(
+                  [
+                    "STUDENT NAME",
+                    "ROLL NO",
+                    "GENDER",
+                    "DATE OF BIRTH",
+                    "EMAIL",
+                    "PHONE",
+                    "PASSING YEAR",
+                    "CURRENT YEAR",
+                  ].map(toCanonicalKey),
+                );
+
+                const filteredTenthEntries = getUniqueEntries(
+                  Object.entries(tenthDetails),
+                  seenKeys,
+                );
+                const filteredTwelfthEntries = getUniqueEntries(
+                  Object.entries(twelfthDetails),
+                  seenKeys,
+                );
+                const filteredDiplomaEntries = getUniqueEntries(
+                  Object.entries(diplomaDetails),
+                  seenKeys,
+                );
+                const filteredGraduationEntries = getUniqueEntries(
+                  Object.entries(graduationDetails),
+                  seenKeys,
+                );
+                const filteredPostGraduationEntries = getUniqueEntries(
+                  Object.entries(postGraduationDetails),
+                  seenKeys,
+                );
+
+                return (
+                  <>
+                    <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+                      <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">
+                        Basic Information
+                      </h2>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <ProfileItem label="Student Name" value={fullName} />
+                        <ProfileItem label="Roll No" value={rollNo} />
+                        <ProfileItem label="Gender" value={gender} />
+                        <ProfileItem label="Date of Birth" value={dob} />
+                        <ProfileItem label="Current Year" value={currentYear} />
+                        <ProfileItem label="Passing Year" value={passingYear} />
+                      </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+                      <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">
+                        Contact Details
+                      </h2>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <ProfileItem label="Email" value={email} />
+                        <ProfileItem label="Phone" value={phone} />
+                        <ProfileItem label="Hometown" value={hometown} />
+                      </div>
+                    </section>
+
+                    <DetailsSection
+                      title="10th Details"
+                      entries={filteredTenthEntries}
+                    />
+                    <DetailsSection
+                      title="12th Details"
+                      entries={filteredTwelfthEntries}
+                    />
+                    <DetailsSection
+                      title="Diploma Details"
+                      entries={filteredDiplomaEntries}
+                    />
+                    <DetailsSection
+                      title="Graduation Details"
+                      entries={filteredGraduationEntries}
+                    />
+                    <DetailsSection
+                      title="Post Graduation Details"
+                      entries={filteredPostGraduationEntries}
+                    />
+                  </>
+                );
+              })()}
+
+              <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+                <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">
+                  Enrolled Certificates
+                </h2>
 
                 {certificates.length === 0 ? (
-                  <p className="rounded-xl bg-gray-100 px-4 py-6 text-center text-gray-600">
+                  <p className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] px-4 py-6 text-center text-gray-600">
                     Student is not enrolled in any certificate.
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {certificates.map((certificate) => (
+                    {certificates.map((certificate) =>
                       // Prefer per-certificate status map; fallback to legacy single result field.
                       (() => {
                         const statusFromMap =
                           student.certificateResults?.[certificate.id]?.status;
                         const statusFromLegacy =
-                          student.certificateResult?.certificateId === certificate.id
+                          student.certificateResult?.certificateId ===
+                          certificate.id
                             ? student.certificateResult?.status
                             : null;
                         const status =
@@ -105,19 +252,27 @@ export default function StudentCertificateProgress() {
                             : "-");
 
                         return (
-                      <div
-                        key={certificate.id}
-                        className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] gap-4 rounded-xl bg-gray-100 px-4 py-3"
-                      >
-                        <p className="font-medium text-gray-900">{certificate.name || "-"}</p>
-                        <p className="text-gray-800">{certificate.platform || "-"}</p>
-                        <p className="text-gray-800 capitalize">{status}</p>
-                        <p className="text-gray-800">{student.progress || "0%"}</p>
-                        <p className="text-gray-800">{student.exams || "0 / 0"}</p>
-                      </div>
+                          <div
+                            key={certificate.id}
+                            className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] gap-4 rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] px-4 py-3"
+                          >
+                            <p className="font-medium text-gray-900">
+                              {certificate.name || "-"}
+                            </p>
+                            <p className="text-gray-800">
+                              {certificate.platform || "-"}
+                            </p>
+                            <p className="text-gray-800 capitalize">{status}</p>
+                            <p className="text-gray-800">
+                              {student.progress || "0%"}
+                            </p>
+                            <p className="text-gray-800">
+                              {student.exams || "0 / 0"}
+                            </p>
+                          </div>
                         );
-                      })()
-                    ))}
+                      })(),
+                    )}
                   </div>
                 )}
               </section>
@@ -126,5 +281,39 @@ export default function StudentCertificateProgress() {
         </div>
       </div>
     </SuperAdminLayout>
+  );
+}
+
+function ProfileItem({ label, value }) {
+  return (
+    <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4 shadow-sm transition hover:border-[#BCD0E7]">
+      <p className="text-xs uppercase tracking-wide text-[#0B2A4A]/60">
+        {label}
+      </p>
+      <p className="mt-1 text-base font-semibold text-[#0B2A4A]">
+        {value || "-"}
+      </p>
+    </div>
+  );
+}
+
+function DetailsSection({ title, entries }) {
+  const filteredEntries = entries.filter(
+    ([, value]) => String(value ?? "").trim() !== "",
+  );
+
+  if (filteredEntries.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">{title}</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {filteredEntries.map(([label, value]) => (
+          <ProfileItem key={`${title}-${label}`} label={label} value={value} />
+        ))}
+      </div>
+    </section>
   );
 }

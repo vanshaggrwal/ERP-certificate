@@ -12,6 +12,7 @@ import {
   writeBatch,
   increment,
   collectionGroup,
+  documentId,
 } from "firebase/firestore";
 import { codeToDocId, docIdToCode } from "../src/utils/projectCodeUtils";
 
@@ -49,20 +50,23 @@ export const addStudent = async (studentData) => {
       )
       .filter(Boolean);
 
-    const certificateResults = certificateIds.reduce((acc, certificateId, index) => {
-      const certificateName = certificateNames[index] || "";
-      if (!certificateName) {
-        return acc;
-      }
+    const certificateResults = certificateIds.reduce(
+      (acc, certificateId, index) => {
+        const certificateName = certificateNames[index] || "";
+        if (!certificateName) {
+          return acc;
+        }
 
-      acc[certificateId] = {
-        certificateId,
-        certificateName,
-        status: "enrolled",
-        updatedAt: new Date(),
-      };
-      return acc;
-    }, {});
+        acc[certificateId] = {
+          certificateId,
+          certificateName,
+          status: "enrolled",
+          updatedAt: new Date(),
+        };
+        return acc;
+      },
+      {},
+    );
 
     const projectDocId = codeToDocId(studentData.projectId);
     const projectRef = doc(db, STUDENTS_COLLECTION, projectDocId);
@@ -196,11 +200,20 @@ export const getStudentsByProject = async (projectId) => {
 
 export const getStudentByDocId = async (studentDocId) => {
   try {
-    const studentRef = doc(db, STUDENTS_COLLECTION, studentDocId);
-    const studentSnap = await getDoc(studentRef);
-    if (!studentSnap.exists()) {
+    if (!studentDocId) {
       return null;
     }
+
+    const q = query(
+      collectionGroup(db, "students_list"),
+      where(documentId(), "==", String(studentDocId)),
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const studentSnap = querySnapshot.docs[0];
     return {
       docId: studentSnap.id,
       ...studentSnap.data(),
@@ -292,7 +305,9 @@ export const getStudentByEmail = async (email) => {
 
     for (const docSnap of querySnapshot.docs) {
       const data = docSnap.data() || {};
-      const candidate = String(data.email || "").trim().toLowerCase();
+      const candidate = String(data.email || "")
+        .trim()
+        .toLowerCase();
       if (candidate && candidate === normalized) {
         return {
           docId: docSnap.id,
@@ -312,7 +327,10 @@ export const getStudentByEmail = async (email) => {
 export const getStudentById = async (studentId) => {
   try {
     if (!studentId) return null;
-    const q = query(collectionGroup(db, "students_list"), where("id", "==", String(studentId)));
+    const q = query(
+      collectionGroup(db, "students_list"),
+      where("id", "==", String(studentId)),
+    );
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) return null;
     const docSnap = querySnapshot.docs[0];

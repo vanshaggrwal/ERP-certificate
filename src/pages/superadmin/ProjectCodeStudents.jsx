@@ -11,6 +11,7 @@ import { ExcelStudentImport } from "../../components/superadmin/ExcelStudentImpo
 function extractStudentDisplayData(student) {
   return {
     id: student.id,
+    docId: student.docId || student.id,
     name: student.OFFICIAL_DETAILS?.["FULL NAME OF STUDENT"] || "-",
     dob: student.OFFICIAL_DETAILS?.["BIRTH DATE"] || "-",
     tenthPercentage: student.TENTH_DETAILS?.["10th OVERALL MARKS %"] || "-",
@@ -199,20 +200,35 @@ export default function ProjectCodeStudents() {
               {filteredStudents.map((student) => (
                 <div
                   key={student.docId || student.id}
-                  className="grid grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] items-center gap-3 rounded-xl bg-gray-100 px-4 py-3 text-base text-gray-900 lg:text-sm"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      student.docId &&
-                      navigate(
-                        `/superadmin/students/${student.docId}/certificate-progress`,
-                      )
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
+                    student.docId &&
+                    navigate(
+                      `/superadmin/students/${student.docId}/certificate-progress`,
+                      {
+                        state: { projectCode: projectCode?.code || "" },
+                      },
+                    )
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      if (student.docId) {
+                        navigate(
+                          `/superadmin/students/${student.docId}/certificate-progress`,
+                          {
+                            state: { projectCode: projectCode?.code || "" },
+                          },
+                        );
+                      }
                     }
-                    className="justify-self-start text-left font-medium text-blue-700 hover:text-blue-900 hover:underline"
-                  >
+                  }}
+                  className="grid cursor-pointer grid-cols-[2fr_1.3fr_1.3fr_1.1fr_1.6fr_1fr_1fr_40px] items-center gap-3 rounded-xl bg-gray-100 px-4 py-3 text-base text-gray-900 transition hover:bg-white lg:text-sm"
+                >
+                  <p className="pointer-events-none justify-self-start text-left font-medium text-[#0B2A4A]">
                     {student.name || "-"}
-                  </button>
+                  </p>
                   <p>{student.id || "-"}</p>
                   <p>{student.dob || "-"}</p>
                   <p>{student.tenthPercentage ?? "-"}</p>
