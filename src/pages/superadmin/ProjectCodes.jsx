@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
-import ProjectCodeRow from "../../components/superadmin/ProjectCodeRow";
+// import ProjectCodeRow from "../../components/superadmin/ProjectCodeRow";
 import { RefreshCcw, Upload } from "lucide-react";
 import { getAllProjectCodes } from "../../../services/projectCodeService";
 
@@ -27,7 +27,9 @@ export default function ProjectCodes() {
   }, []);
 
   const filtered = projectCodes.filter((p) =>
-    String(p.code || "").toLowerCase().includes(search.toLowerCase())
+    String(p.code || "")
+      .toLowerCase()
+      .includes(search.toLowerCase()),
   );
 
   return (
@@ -37,9 +39,7 @@ export default function ProjectCodes() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-semibold">Project Codes</h1>
-            <p className="text-gray-500 text-sm">
-              Manage your feedback system
-            </p>
+            <p className="text-gray-500 text-sm">Manage your feedback system</p>
           </div>
 
           <button
@@ -91,13 +91,16 @@ export default function ProjectCodes() {
             </thead>
 
             <tbody>
-              {!loading &&
+              {/* {!loading &&
                 filtered.map((row) => (
-                <ProjectCodeRow key={row.id} row={row} />
-                ))}
+                  <ProjectCodeRow key={row.id} row={row} />
+                ))} */}
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-6 text-center text-sm text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="px-6 py-6 text-center text-sm text-gray-500"
+                  >
                     Loading project codes...
                   </td>
                 </tr>
