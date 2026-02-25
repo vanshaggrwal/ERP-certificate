@@ -1,16 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
-// import { projectCodes } from "../../data/projectCodes";
 // import ProjectCodeRow from "../../components/superadmin/ProjectCodeRow";
 import { RefreshCcw, Upload } from "lucide-react";
+import { getAllProjectCodes } from "../../../services/projectCodeService";
 
 export default function ProjectCodes() {
   const [search, setSearch] = useState("");
+  const [projectCodes, setProjectCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // const filtered = projectCodes.filter((p) =>
-  //   p.code.toLowerCase().includes(search.toLowerCase())
-  // );
-  const filtered = [];
+  const fetchProjectCodes = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllProjectCodes();
+      setProjectCodes(data || []);
+    } catch (error) {
+      console.error("Failed to load project codes:", error);
+      setProjectCodes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjectCodes();
+  }, []);
+
+  const filtered = projectCodes.filter((p) =>
+    String(p.code || "")
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
 
   return (
     <SuperAdminLayout>
@@ -22,7 +42,10 @@ export default function ProjectCodes() {
             <p className="text-gray-500 text-sm">Manage your feedback system</p>
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#0B2A4A] text-white rounded-lg">
+          <button
+            onClick={fetchProjectCodes}
+            className="flex items-center gap-2 px-4 py-2 bg-[#0B2A4A] text-white rounded-lg"
+          >
             <RefreshCcw size={16} />
             Refresh
           </button>
@@ -68,9 +91,20 @@ export default function ProjectCodes() {
             </thead>
 
             <tbody>
-              {/* {filtered.map((row) => (
-                <ProjectCodeRow key={row.id} row={row} />
-              ))} */}
+              {/* {!loading &&
+                filtered.map((row) => (
+                  <ProjectCodeRow key={row.id} row={row} />
+                ))} */}
+              {loading && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-6 text-center text-sm text-gray-500"
+                  >
+                    Loading project codes...
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

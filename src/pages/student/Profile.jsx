@@ -70,7 +70,6 @@ export default function StudentProfile() {
     String(student?.collegeCode || "").trim() ||
     String(student?.projectId || "").split(/[-/]/)[0]?.trim() ||
     "-";
-  const courseYear = student?.projectId || student?.courseYear || "-";
 
   const email = officialDetails["EMAIL ID"] || student?.email || "-";
   const phone = officialDetails["MOBILE NO."] || student?.phone || "-";
@@ -178,7 +177,7 @@ export default function StudentProfile() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-[#0B2A4A] via-[#1D5FA8] to-[#6BC7A7] p-6 text-white shadow-sm">
+      <section className="rounded-3xl bg-[#0B2A4A] p-6 text-white shadow-sm">
         <h1 className="text-2xl font-semibold">Student Profile</h1>
         <p className="mt-1 text-sm text-white/90">Manage your academic and certification details.</p>
       </section>
@@ -191,7 +190,6 @@ export default function StudentProfile() {
           <ProfileItem label="Gender" value={gender} />
           <ProfileItem label="Date of Birth" value={dob} />
           <ProfileItem label="College" value={collegeCode} />
-          <ProfileItem label="Course / Year" value={courseYear} />
         </div>
       </section>
 

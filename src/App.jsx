@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useLocation,
 } from "react-router-dom";
 
 /* ================= PUBLIC ================= */
@@ -44,12 +45,18 @@ import StudentProfile from "./pages/student/Profile";
 
 /* ================= COLLEGE ADMIN LAYOUT ================= */
  function CollegeAdminLayout() {
+  const location = useLocation();
+  const hideNavbar =
+    location.pathname === "/college-admin/profile" ||
+    location.pathname === "/college-admin" ||
+    location.pathname === "/college-admin/";
+
   return (
     <div className="flex min-h-screen">
       <CollegeAdminSidebar />
 
       <div className="flex-1 bg-gray-100 flex flex-col">
-        <CollegeAdminNavbar />
+        {!hideNavbar && <CollegeAdminNavbar />}
         <main className="p-8 flex-1">
           <Outlet />
         </main>
