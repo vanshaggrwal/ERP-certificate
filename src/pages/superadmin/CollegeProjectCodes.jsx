@@ -7,7 +7,8 @@ import {
 import { getCollegeByCode } from "../../../services/collegeService";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
 import AddProjectCodeModal from "../../components/superadmin/AddProjectCodeModal";
-import { Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Paperclip, RotateCcw, Trash2 } from "lucide-react";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 export default function CollegeProjectCodes() {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ export default function CollegeProjectCodes() {
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [selectedProjectCode, setSelectedProjectCode] = useState("");
   const [deletingProjectId, setDeletingProjectId] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
   const [filters, setFilters] = useState({
     code: "",
     course: "",
@@ -28,7 +31,10 @@ export default function CollegeProjectCodes() {
   });
 
   const getProjectCodePrefix = (projectCode) =>
-    String(projectCode || "").split("/")[0]?.trim().toUpperCase();
+    String(projectCode || "")
+      .split("/")[0]
+      ?.trim()
+      .toUpperCase();
 
   const filterOptions = useMemo(() => {
     const uniqueSorted = (items) =>
@@ -58,15 +64,22 @@ export default function CollegeProjectCodes() {
         .trim()
         .toUpperCase();
 
-      const normalizedCollegeId = String(collegeId || "").trim().toUpperCase();
+      const normalizedCollegeId = String(collegeId || "")
+        .trim()
+        .toUpperCase();
 
-      const strictCollegeProjectCodes = projectCodesData.filter((projectCode) => {
-        const projectCollegeId = String(projectCode.collegeId || "").trim().toUpperCase();
-        const codePrefix = getProjectCodePrefix(projectCode.code);
-        const matchesCollegeRecord = projectCollegeId === normalizedCollegeId;
-        const matchesCodePrefix = !expectedCollegeCode || codePrefix === expectedCollegeCode;
-        return matchesCollegeRecord && matchesCodePrefix;
-      });
+      const strictCollegeProjectCodes = projectCodesData.filter(
+        (projectCode) => {
+          const projectCollegeId = String(projectCode.collegeId || "")
+            .trim()
+            .toUpperCase();
+          const codePrefix = getProjectCodePrefix(projectCode.code);
+          const matchesCollegeRecord = projectCollegeId === normalizedCollegeId;
+          const matchesCodePrefix =
+            !expectedCollegeCode || codePrefix === expectedCollegeCode;
+          return matchesCollegeRecord && matchesCodePrefix;
+        },
+      );
 
       setProjectCodes(strictCollegeProjectCodes);
       setCollege(collegeData);
@@ -116,17 +129,13 @@ export default function CollegeProjectCodes() {
     navigate(`/superadmin/project-codes/${projectId}/students`);
   };
 
-  const handleSoftDeleteProjectCode = async (row) => {
-    const shouldDelete = window.confirm(
-      `Soft delete project code ${row.code}? You can restore it by adding the same project code again.`,
-    );
-    if (!shouldDelete) {
-      return;
-    }
-
+  const handleSoftDeleteProjectCode = async () => {
+    if (!confirmTarget) return;
     try {
-      setDeletingProjectId(row.id);
-      await softDeleteProjectCode(row.id, row.code);
+      setDeletingProjectId(confirmTarget.id);
+      await softDeleteProjectCode(confirmTarget.id, confirmTarget.code);
+      setConfirmOpen(false);
+      setConfirmTarget(null);
       await fetchData();
     } catch (deleteError) {
       console.error(deleteError);
@@ -134,6 +143,11 @@ export default function CollegeProjectCodes() {
     } finally {
       setDeletingProjectId("");
     }
+  };
+
+  const openDeleteConfirm = (row) => {
+    setConfirmTarget(row);
+    setConfirmOpen(true);
   };
 
   if (loading) {
@@ -296,12 +310,12 @@ export default function CollegeProjectCodes() {
                     <p>{row.course || "-"}</p>
                     <p>{row.type || "-"}</p>
                     <span className="justify-self-end text-gray-600">
-                      <Pencil size={18} />
+                      <Paperclip size={18} />
                     </span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleSoftDeleteProjectCode(row)}
+                    onClick={() => openDeleteConfirm(row)}
                     disabled={deletingProjectId === row.id}
                     className="justify-self-end text-red-600 hover:text-red-700 disabled:opacity-50"
                     title="Soft delete project code"
@@ -324,12 +338,29 @@ export default function CollegeProjectCodes() {
       {showAddProjectModal && (
         <AddProjectCodeModal
           collegeId={collegeId}
-          collegeCode={college?.college_code || college?.collegeCode || collegeId}
+          collegeCode={
+            college?.college_code || college?.collegeCode || collegeId
+          }
           collegeName={college?.college_name || ""}
           onClose={() => setShowAddProjectModal(false)}
           onProjectCodeAdded={handleProjectCodeAdded}
         />
       )}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Confirm Deletion"
+        message={
+          confirmTarget
+            ? `Soft delete project code ${confirmTarget.code}? You can restore it by adding the same project code again.`
+            : "Are you sure you want to delete this project code?"
+        }
+        onConfirm={handleSoftDeleteProjectCode}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setConfirmTarget(null);
+        }}
+        loading={deletingProjectId === (confirmTarget && confirmTarget.id)}
+      />
     </SuperAdminLayout>
   );
 }
