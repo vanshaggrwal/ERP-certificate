@@ -6,7 +6,6 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useState } from "react";
-import { Menu } from "lucide-react";
 
 /* ================= PUBLIC ================= */
 import Landing from "./pages/Landing";
@@ -29,6 +28,7 @@ import SuperAdminHelp from "./pages/superadmin/Help";
 
 /* ================= COLLEGE ADMIN ================= */
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
+import CollegeAdminNavbar from "./components/collegeadmin/CollegeAdminNavbar";
 
 import AdminDashboard from "./pages/college-admin/Dashboard";
 import Students from "./pages/college-admin/Students";
@@ -63,16 +63,7 @@ function CollegeAdminLayout() {
       />
 
       <div className="flex h-full min-w-0 w-full flex-1 flex-col overflow-y-auto bg-[#F3F6FA]">
-        <div className="px-4 pt-4 sm:px-6 md:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 shadow-sm"
-            aria-label="Open menu"
-          >
-            <Menu size={18} />
-          </button>
-        </div>
+        <CollegeAdminNavbar onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="p-4 sm:p-6 md:p-8 flex-1">
           <Outlet />
         </main>
