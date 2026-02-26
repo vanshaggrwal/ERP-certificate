@@ -18,3 +18,87 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* =========================================
+   Global 3D & Hover Effects 
+   ========================================= */
+
+/* 1. Buttons (excluding Sidebar which uses <aside>) */
+button:not(aside button) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: transform, box-shadow;
+}
+
+button:not(aside button):hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px -5px rgba(15, 43, 70, 0.3), 0 8px 10px -6px rgba(15, 43, 70, 0.2) !important;
+}
+
+button:not(aside button):active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px -1px rgba(15, 43, 70, 0.2) !important;
+}
+
+/* 2. Cards and Containers (targeting typical Tailwind classes used for layout blocks) */
+.bg-white.shadow-sm,
+.bg-white.shadow,
+.bg-white.shadow-md,
+.bg-white.shadow-lg,
+.rounded-xl.border,
+.rounded-lg.border,
+.rounded-2xl {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.bg-white.shadow-sm:hover,
+.bg-white.shadow:hover,
+.bg-white.shadow-md:hover,
+.rounded-xl.border:hover,
+.rounded-lg.border:hover {
+  transform: translateY(-4px) scale(1.005);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  z-index: 10;
+}
+
+/* 3. Inputs, Selects, Textareas */
+input,
+select,
+textarea {
+  transition: all 0.3s ease-in-out !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 4. Table Rows and List Items */
+tr,
+li,
+.flex.items-center.p-3,
+.flex.items-center.p-4 {
+  transition: all 0.2s ease-in-out;
+}
+
+tbody tr:hover,
+li.hover\:bg-gray-50:hover,
+.hover\:bg-gray-50:hover {
+  transform: scale(1.002) translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  z-index: 20;
+  position: relative;
+  background-color: #f8fafc;
+}
+
+/* 5. Links (excluding Sidebar) */
+a:not(aside a) {
+  transition: all 0.2s ease-in-out;
+  display: inline-block;
+}
+
+a:not(aside a):hover {
+  transform: translateY(-1px);
+}
