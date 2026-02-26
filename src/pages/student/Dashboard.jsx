@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentForAuthUser } from "../../../services/studentService";
 import { getCertificatesByIds } from "../../../services/certificateService";
+import { getAllOrganizations } from "../../../services/organizationService";
 
 const getCurrentYearFromProjectCode = (projectCodeValue) => {
   const parts = String(projectCodeValue || "")
@@ -135,6 +136,18 @@ export default function StudentDashboard() {
             ? await getCertificatesByIds(certificateIds)
             : [];
 
+        const organizations = await getAllOrganizations();
+        const organizationByName = new Map(
+          (organizations || [])
+            .filter((organization) => organization?.name)
+            .map((organization) => [
+              String(organization.name || "")
+                .trim()
+                .toLowerCase(),
+              organization,
+            ]),
+        );
+
         const certificateById = new Map(
           linkedCertificates
             .filter((certificate) => certificate?.id)
@@ -149,6 +162,13 @@ export default function StudentDashboard() {
             id: certificateId || `cert-${index}`,
             name: certificateDoc?.name || `Certificate ${index + 1}`,
             platform: certificateDoc?.platform || "Certification",
+            organizationName: certificateDoc?.domain || "",
+            organizationLogoUrl:
+              organizationByName.get(
+                String(certificateDoc?.domain || "")
+                  .trim()
+                  .toLowerCase(),
+              )?.logoUrl || "",
             level: certificateDoc?.level || "Beginner",
             status: "enrolled",
           });
@@ -170,6 +190,18 @@ export default function StudentDashboard() {
               `Certificate ${index + 1}`,
             platform:
               certificateDoc?.platform || existing?.platform || "Certification",
+            organizationName:
+              certificateDoc?.domain || existing?.organizationName || "",
+            organizationLogoUrl:
+              organizationByName.get(
+                String(
+                  certificateDoc?.domain || existing?.organizationName || "",
+                )
+                  .trim()
+                  .toLowerCase(),
+              )?.logoUrl ||
+              existing?.organizationLogoUrl ||
+              "",
             level: certificateDoc?.level || existing?.level || "Beginner",
             status: normalizeCertificateStatus(resolvedStatus),
           });
@@ -204,6 +236,18 @@ export default function StudentDashboard() {
               "Certificate",
             platform:
               certificateDoc?.platform || existing?.platform || "Certification",
+            organizationName:
+              certificateDoc?.domain || existing?.organizationName || "",
+            organizationLogoUrl:
+              organizationByName.get(
+                String(
+                  certificateDoc?.domain || existing?.organizationName || "",
+                )
+                  .trim()
+                  .toLowerCase(),
+              )?.logoUrl ||
+              existing?.organizationLogoUrl ||
+              "",
             level: certificateDoc?.level || existing?.level || "Beginner",
             status: normalizeCertificateStatus(
               legacyCertificateResult.status ||
@@ -429,10 +473,20 @@ function CertificateCard({ certificate }) {
 
   return (
     <article className="min-w-[270px] max-w-[300px] flex-1 overflow-hidden rounded-2xl border border-[#D7E2F1] bg-white shadow-sm">
-      <div className="h-24 bg-[#0B2A4A] px-4 py-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-white/80">
-          Certificate
-        </p>
+      <div className="h-24 bg-[#0B2A4A]">
+        {certificate.organizationLogoUrl ? (
+          <img
+            src={certificate.organizationLogoUrl}
+            alt={`${certificate.organizationName || "Organisation"} logo`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <p className="text-xs font-medium uppercase tracking-wide text-white/80">
+              Certificate
+            </p>
+          </div>
+        )}
       </div>
       <div className="space-y-3 p-4">
         <div>
