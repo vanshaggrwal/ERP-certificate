@@ -13,6 +13,8 @@ import {
   increment,
   collectionGroup,
   documentId,
+  limit,
+  FieldPath,
 } from "firebase/firestore";
 import { codeToDocId, docIdToCode } from "../src/utils/projectCodeUtils";
 import { isLocalDbMode } from "./dbModeService";
@@ -351,25 +353,66 @@ export const getStudentByEmail = async (email) => {
   try {
     if (!email) return null;
 
-    const normalized = String(email).trim().toLowerCase();
+    const rawEmail = String(email).trim();
+    if (!rawEmail) return null;
 
-    // Query all students_list documents and perform a case-insensitive match in JS.
-    // This avoids relying on the stored email casing.
-    const allQuery = collectionGroup(db, "students_list");
-    const querySnapshot = await getDocs(allQuery);
-    if (querySnapshot.empty) return null;
+    const byRawQuery = query(
+      collectionGroup(db, "students_list"),
+      where("email", "==", rawEmail),
+      limit(1),
+    );
+    const rawSnapshot = await getDocs(byRawQuery);
+    if (!rawSnapshot.empty) {
+      const docSnap = rawSnapshot.docs[0];
+      return {
+        docId: docSnap.id,
+        ...docSnap.data(),
+      };
+    }
 
-    for (const docSnap of querySnapshot.docs) {
-      const data = docSnap.data() || {};
-      const candidate = String(data.email || "")
-        .trim()
-        .toLowerCase();
-      if (candidate && candidate === normalized) {
+    const normalized = rawEmail.toLowerCase();
+    if (normalized !== rawEmail) {
+      const byNormalizedQuery = query(
+        collectionGroup(db, "students_list"),
+        where("email", "==", normalized),
+        limit(1),
+      );
+      const normalizedSnapshot = await getDocs(byNormalizedQuery);
+      if (!normalizedSnapshot.empty) {
+        const docSnap = normalizedSnapshot.docs[0];
         return {
           docId: docSnap.id,
-          ...data,
+          ...docSnap.data(),
         };
       }
+    }
+
+    const byOfficialEmailQuery = query(
+      collectionGroup(db, "students_list"),
+      where(new FieldPath("OFFICIAL_DETAILS", "EMAIL ID"), "==", rawEmail),
+      limit(1),
+    );
+    const officialEmailSnapshot = await getDocs(byOfficialEmailQuery);
+    if (!officialEmailSnapshot.empty) {
+      const docSnap = officialEmailSnapshot.docs[0];
+      return {
+        docId: docSnap.id,
+        ...docSnap.data(),
+      };
+    }
+
+    const byOfficialEmailDotQuery = query(
+      collectionGroup(db, "students_list"),
+      where(new FieldPath("OFFICIAL_DETAILS", "EMAIL ID."), "==", rawEmail),
+      limit(1),
+    );
+    const officialEmailDotSnapshot = await getDocs(byOfficialEmailDotQuery);
+    if (!officialEmailDotSnapshot.empty) {
+      const docSnap = officialEmailDotSnapshot.docs[0];
+      return {
+        docId: docSnap.id,
+        ...docSnap.data(),
+      };
     }
 
     return null;
@@ -440,7 +483,7 @@ export const getStudentForAuthUser = async ({ profile, user } = {}) => {
       profile?.projectCode || profile?.projectId || "",
     ).trim();
     const profileStudentId = String(
-      profile?.studentId || profile?.id || "",
+      profile?.studentId || profile?.student_id || profile?.rollNo || "",
     ).trim();
     const profileEmail = String(profile?.email || user?.email || "").trim();
 
@@ -452,14 +495,14 @@ export const getStudentForAuthUser = async ({ profile, user } = {}) => {
       if (byProjectAndId) return byProjectAndId;
     }
 
-    if (profileStudentId) {
-      const byId = await getStudentById(profileStudentId);
-      if (byId) return byId;
-    }
-
     if (profileEmail) {
       const byEmail = await getStudentByEmail(profileEmail);
       if (byEmail) return byEmail;
+    }
+
+    if (profileStudentId) {
+      const byId = await getStudentById(profileStudentId);
+      if (byId) return byId;
     }
 
     return null;

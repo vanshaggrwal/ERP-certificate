@@ -31,8 +31,25 @@ service cloud.firestore {
       return requesterRole() == "collegeadmin";
     }
 
+    function isStudent() {
+      return !isSuperAdmin() && !isCollegeAdmin() && isSignedIn();
+    }
+
     function sameUser(userId) {
       return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function sameAuthEmail(resourceEmail) {
+      return isSignedIn() &&
+        request.auth.token.email is string &&
+        resourceEmail is string &&
+        request.auth.token.email == resourceEmail;
+    }
+
+    function sameAuthEmailFromStudentDoc(studentData) {
+      return sameAuthEmail(studentData.email) ||
+        sameAuthEmail(studentData.OFFICIAL_DETAILS["EMAIL ID"]) ||
+        sameAuthEmail(studentData.OFFICIAL_DETAILS["EMAIL ID."]);
     }
 
     function projectDocBelongsToRequester(projectDocId) {
@@ -48,6 +65,13 @@ service cloud.firestore {
         projectDocBelongsToRequester(projectDocId);
     }
 
+    function ticketOwnedByRequester(ticketData) {
+      return isSignedIn() && (
+        (ticketData.createdByUid is string && ticketData.createdByUid == request.auth.uid) ||
+        sameAuthEmail(ticketData.createdByEmail)
+      );
+    }
+
     match /users/{userId} {
       allow read: if sameUser(userId) || isSuperAdmin();
       allow create: if isSuperAdmin();
@@ -61,13 +85,10 @@ service cloud.firestore {
         (isSignedIn() &&
           (
             (resource.data.uid is string && resource.data.uid == request.auth.uid) ||
-            (
-              request.auth.token.email is string &&
-              resource.data.email is string &&
-              resource.data.email == request.auth.token.email
-            )
+            sameAuthEmail(resource.data.email)
           ));
-      allow create, update, delete: if isSuperAdmin();
+      allow create, update: if isSuperAdmin() || sameUser(userId);
+      allow delete: if isSuperAdmin();
     }
 
     match /projectCodes/{projectCodeId} {
@@ -85,7 +106,12 @@ service cloud.firestore {
     }
 
     match /certificates/{certificateId} {
-      allow read: if isSuperAdmin() || isCollegeAdmin();
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /organizations/{organizationId} {
+      allow read: if isSignedIn();
       allow create, update, delete: if isSuperAdmin();
     }
 
@@ -97,16 +123,47 @@ service cloud.firestore {
       match /students_list/{studentId} {
         allow read: if isSuperAdmin() ||
           (isCollegeAdmin() &&
-            studentBelongsToRequester(resource.data, projectDocId));
+            studentBelongsToRequester(resource.data, projectDocId)) ||
+          sameAuthEmailFromStudentDoc(resource.data);
         allow create, update, delete: if isSuperAdmin();
       }
     }
 
     match /college/{collegeCode} {
-      allow read: if isSuperAdmin() ||
+      allow read: if isStudent() || isSuperAdmin() ||
         (isCollegeAdmin() &&
           ("" + collegeCode).lower() == requesterCollegeCode());
       allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /helpTickets/{ticketId} {
+      allow read: if isSuperAdmin() ||
+        (isCollegeAdmin() && ticketOwnedByRequester(resource.data));
+      allow create: if isCollegeAdmin() &&
+        ticketOwnedByRequester(request.resource.data) &&
+        (request.resource.data.createdByRole is string &&
+          request.resource.data.createdByRole.lower() == "collegeadmin");
+      allow update: if isSuperAdmin() ||
+        (isCollegeAdmin() &&
+          ticketOwnedByRequester(resource.data) &&
+          ticketOwnedByRequester(request.resource.data));
+      allow delete: if isSuperAdmin();
+
+      match /remarks/{remarkId} {
+        allow read: if isSuperAdmin() ||
+          (isCollegeAdmin() &&
+            ticketOwnedByRequester(
+              get(/databases/$(database)/documents/helpTickets/$(ticketId)).data
+            ));
+        allow create: if isSuperAdmin() ||
+          (isCollegeAdmin() &&
+            (request.resource.data.authorUid is string &&
+              request.resource.data.authorUid == request.auth.uid) &&
+            ticketOwnedByRequester(
+              get(/databases/$(database)/documents/helpTickets/$(ticketId)).data
+            ));
+        allow update, delete: if isSuperAdmin();
+      }
     }
   }
 }

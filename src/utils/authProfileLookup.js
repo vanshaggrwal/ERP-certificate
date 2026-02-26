@@ -46,20 +46,29 @@ export const getAuthUserProfile = async ({ uid, email }) => {
     return studentByUid;
   }
 
-  const normalizedEmail = String(email || "")
-    .trim()
-    .toLowerCase();
-  if (normalizedEmail) {
-    const studentByEmailSnap = await getDocs(
-      query(
-        collection(db, "student_users"),
-        where("email", "==", normalizedEmail),
-        limit(1),
-      ),
+  const rawEmail = String(email || "").trim();
+  if (rawEmail) {
+    const studentByRawEmailSnap = await getDocs(
+      query(collection(db, "student_users"), where("email", "==", rawEmail), limit(1)),
     );
-    const studentByEmail = getFirstDocData(studentByEmailSnap);
-    if (studentByEmail) {
-      return studentByEmail;
+    const studentByRawEmail = getFirstDocData(studentByRawEmailSnap);
+    if (studentByRawEmail) {
+      return studentByRawEmail;
+    }
+
+    const normalizedEmail = rawEmail.toLowerCase();
+    if (normalizedEmail !== rawEmail) {
+      const studentByNormalizedEmailSnap = await getDocs(
+        query(
+          collection(db, "student_users"),
+          where("email", "==", normalizedEmail),
+          limit(1),
+        ),
+      );
+      const studentByNormalizedEmail = getFirstDocData(studentByNormalizedEmailSnap);
+      if (studentByNormalizedEmail) {
+        return studentByNormalizedEmail;
+      }
     }
   }
 

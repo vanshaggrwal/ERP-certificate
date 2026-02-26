@@ -158,12 +158,27 @@ export default function StudentDashboard() {
       setCertLoading(true);
       try {
         const certificateIds = Array.from(certificateIdSet);
-        const linkedCertificates =
-          certificateIds.length > 0
-            ? await getCertificatesByIds(certificateIds)
-            : [];
+        let linkedCertificates = [];
+        if (certificateIds.length > 0) {
+          try {
+            linkedCertificates = await getCertificatesByIds(certificateIds);
+          } catch (certificateError) {
+            console.warn(
+              "Unable to fetch certificate metadata; falling back to student result data:",
+              certificateError,
+            );
+          }
+        }
 
-        const organizations = await getAllOrganizations();
+        let organizations = [];
+        try {
+          organizations = await getAllOrganizations();
+        } catch (organizationError) {
+          console.warn(
+            "Unable to fetch organization metadata; proceeding without logos:",
+            organizationError,
+          );
+        }
         const organizationByName = new Map(
           (organizations || [])
             .filter((organization) => organization?.name)
