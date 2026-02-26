@@ -7,6 +7,7 @@ const defaultStore = () => ({
     projectCode: 0,
     certificate: 0,
     organization: 0,
+    helpTicket: 0,
     user: 0,
   },
   colleges: {},
@@ -15,6 +16,8 @@ const defaultStore = () => ({
   certificates: {},
   organizations: {},
   certificateProjectEnrollments: {},
+  helpTickets: {},
+  helpTicketRemarks: {},
   users: {},
   student_users: {},
 });
@@ -45,6 +48,8 @@ const readStore = () => {
       organizations: parsed?.organizations || {},
       certificateProjectEnrollments:
         parsed?.certificateProjectEnrollments || {},
+      helpTickets: parsed?.helpTickets || {},
+      helpTicketRemarks: parsed?.helpTicketRemarks || {},
       users: parsed?.users || {},
       student_users: parsed?.student_users || {},
     };
@@ -850,6 +855,121 @@ export const localUpdateOrganization = async (
 
     return { ...store.organizations[id] };
   });
+
+export const localCreateHelpTicket = async (ticketData = {}) =>
+  withStore((store) => {
+    const id = generateId(store, "helpTicket", "ticket");
+    const now = nowIso();
+
+    const row = {
+      id,
+      subject: String(ticketData.subject || "").trim(),
+      description: String(ticketData.description || "").trim(),
+      category: String(ticketData.category || "General").trim() || "General",
+      priority: String(ticketData.priority || "Medium").trim() || "Medium",
+      status: String(ticketData.status || "Open").trim() || "Open",
+      collegeCode: String(ticketData.collegeCode || "").trim(),
+      collegeName: String(ticketData.collegeName || "").trim(),
+      createdByUid: String(ticketData.createdByUid || "").trim(),
+      createdByName: String(ticketData.createdByName || "").trim(),
+      createdByRole: String(ticketData.createdByRole || "").trim(),
+      createdAt: now,
+      updatedAt: now,
+      lastRemarkAt: null,
+    };
+
+    store.helpTickets[id] = row;
+    store.helpTicketRemarks[id] = store.helpTicketRemarks[id] || [];
+    return { ...row };
+  });
+
+export const localGetHelpTickets = async (filters = {}) => {
+  const store = readStore();
+  const createdByUid = String(filters?.createdByUid || "").trim();
+  const role = String(filters?.role || "")
+    .trim()
+    .toLowerCase();
+
+  const rows = Object.values(store.helpTickets || {}).filter((ticket) => {
+    if (role === "collegeadmin" && createdByUid) {
+      return String(ticket.createdByUid || "") === createdByUid;
+    }
+    return true;
+  });
+
+  return rows.sort((a, b) => {
+    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+};
+
+export const localUpdateHelpTicketStatus = async (
+  ticketId,
+  status,
+  actor = {},
+) =>
+  withStore((store) => {
+    const id = String(ticketId || "").trim();
+    const row = store.helpTickets[id];
+    if (!row) throw new Error("Ticket not found.");
+
+    store.helpTickets[id] = {
+      ...row,
+      status: String(status || row.status || "Open").trim() || "Open",
+      updatedAt: nowIso(),
+      updatedByUid: String(actor?.uid || "").trim(),
+      updatedByName: String(actor?.name || "").trim(),
+      updatedByRole: String(actor?.role || "").trim(),
+    };
+
+    return { ...store.helpTickets[id] };
+  });
+
+export const localAddHelpTicketRemark = async (ticketId, remarkData = {}) =>
+  withStore((store) => {
+    const id = String(ticketId || "").trim();
+    const ticket = store.helpTickets[id];
+    if (!ticket) throw new Error("Ticket not found.");
+
+    const text = String(remarkData.text || "").trim();
+    if (!text) throw new Error("Remark text is required.");
+
+    const remarks = Array.isArray(store.helpTicketRemarks[id])
+      ? store.helpTicketRemarks[id]
+      : [];
+
+    const remark = {
+      id: `remark_${remarks.length + 1}`,
+      text,
+      createdAt: nowIso(),
+      authorUid: String(remarkData.authorUid || "").trim(),
+      authorName: String(remarkData.authorName || "").trim(),
+      authorRole: String(remarkData.authorRole || "").trim(),
+    };
+
+    store.helpTicketRemarks[id] = [remark, ...remarks];
+    store.helpTickets[id] = {
+      ...ticket,
+      lastRemarkAt: remark.createdAt,
+      updatedAt: nowIso(),
+    };
+
+    return { ...remark };
+  });
+
+export const localGetHelpTicketRemarks = async (ticketId) => {
+  const store = readStore();
+  const id = String(ticketId || "").trim();
+  const remarks = Array.isArray(store.helpTicketRemarks[id])
+    ? store.helpTicketRemarks[id]
+    : [];
+  return [...remarks].sort(
+    (a, b) =>
+      new Date(b.createdAt || 0).getTime() -
+      new Date(a.createdAt || 0).getTime(),
+  );
+};
 
 export const localEnrollProjectCodeIntoCertificate = async ({
   certificateId,

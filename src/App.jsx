@@ -17,13 +17,14 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 /* ================= SUPER ADMIN ================= */
 import SuperAdminDashboard from "../src/pages/superadmin/Dashboard";
 import SuperAdminColleges from "../src/pages/superadmin/Colleges";
-import SuperAdminCertificationConfig from "../src/pages/superadmin/CertificateConfig"
-import SuperAdminAdmins from "../src/pages/superadmin/Admins"
-import SuperAdminProjectCodes from "../src/pages/superadmin/ProjectCodes"
+import SuperAdminCertificationConfig from "../src/pages/superadmin/CertificateConfig";
+import SuperAdminAdmins from "../src/pages/superadmin/Admins";
+import SuperAdminProjectCodes from "../src/pages/superadmin/ProjectCodes";
 import CollegeProjectCodes from "./pages/superadmin/CollegeProjectCodes";
 import ProjectCodeStudents from "./pages/superadmin/ProjectCodeStudents";
 import StudentCertificateProgress from "./pages/superadmin/StudentCertificateProgress";
 import SuperAdminProfile from "./pages/superadmin/Profile";
+import SuperAdminHelp from "./pages/superadmin/Help";
 
 /* ================= COLLEGE ADMIN ================= */
 import CollegeAdminSidebar from "./components/collegeadmin/CollegeAdminSidebar";
@@ -35,7 +36,7 @@ import StudentDetails from "./pages/college-admin/StudentDetails";
 import ProjectStudents from "./pages/college-admin/ProjectStudents";
 import Certificates from "./pages/college-admin/Certificates";
 import Exams from "./pages/college-admin/Exams";
-import Help from "./pages/college-admin/Help";
+import CollegeAdminHelp from "./pages/college-admin/Help";
 import CollegeAdminProfile from "./pages/college-admin/Profile";
 
 /* ================= STUDENT ================= */
@@ -44,7 +45,7 @@ import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
 
 /* ================= COLLEGE ADMIN LAYOUT ================= */
- function CollegeAdminLayout() {
+function CollegeAdminLayout() {
   const location = useLocation();
   const hideNavbar =
     location.pathname === "/college-admin/profile" ||
@@ -78,35 +79,39 @@ export default function App() {
         <Route path="/home" element={<Landing />} />
 
         {/* ================= SUPER ADMIN ================= */}
-   {/* ================= SUPER ADMIN ================= */}
-<Route
-  path="/superadmin"
-  element={
-    <ProtectedRoute allowedRoles={["superAdmin"]}>
-      <Outlet />
-    </ProtectedRoute>
-  }
->
-    <Route index element={<Navigate to="dashboard" replace />} />
-    <Route path="dashboard" element={<SuperAdminDashboard />} />
-  <Route path="colleges" element={<SuperAdminColleges />} />
-  <Route
-  path="colleges/:collegeId/project-codes"
-  element={<CollegeProjectCodes />}
-/>
-  <Route
-    path="project-codes/:projectId/students"
-    element={<ProjectCodeStudents />}
-/>
-  <Route
-    path="students/:studentDocId/certificate-progress"
-    element={<StudentCertificateProgress />}
-/>
-  <Route path="profile" element={<SuperAdminProfile />} />
-  <Route path="certificationconfig" element={<SuperAdminCertificationConfig />} />
-  <Route path="admins" element={<SuperAdminAdmins />} />
-  <Route path="projectcodes" element={<SuperAdminProjectCodes />} />
-</Route>
+        {/* ================= SUPER ADMIN ================= */}
+        <Route
+          path="/superadmin"
+          element={
+            <ProtectedRoute allowedRoles={["superAdmin"]}>
+              <Outlet />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SuperAdminDashboard />} />
+          <Route path="colleges" element={<SuperAdminColleges />} />
+          <Route
+            path="colleges/:collegeId/project-codes"
+            element={<CollegeProjectCodes />}
+          />
+          <Route
+            path="project-codes/:projectId/students"
+            element={<ProjectCodeStudents />}
+          />
+          <Route
+            path="students/:studentDocId/certificate-progress"
+            element={<StudentCertificateProgress />}
+          />
+          <Route path="profile" element={<SuperAdminProfile />} />
+          <Route
+            path="certificationconfig"
+            element={<SuperAdminCertificationConfig />}
+          />
+          <Route path="admins" element={<SuperAdminAdmins />} />
+          <Route path="projectcodes" element={<SuperAdminProjectCodes />} />
+          <Route path="help" element={<SuperAdminHelp />} />
+        </Route>
 
         {/* ================= STUDENT ================= */}
         <Route
@@ -117,11 +122,10 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-
           <Route index element={<StudentDashboard />} />
-          
+
           <Route path="dashboard" element={<StudentDashboard />} />
-          
+
           <Route path="profile" element={<StudentProfile />} />
         </Route>
 
@@ -133,7 +137,6 @@ export default function App() {
               <CollegeAdminLayout />
             </ProtectedRoute>
           }
-
         >
           <Route index element={<AdminDashboard />} />
           <Route path="students" element={<Students />} />
@@ -141,7 +144,7 @@ export default function App() {
           <Route path="projects/:projectId" element={<ProjectStudents />} />
           <Route path="certificates" element={<Certificates />} />
           <Route path="exams" element={<Exams />} />
-          <Route path="help" element={<Help />} />
+          <Route path="help" element={<CollegeAdminHelp />} />
           <Route path="profile" element={<CollegeAdminProfile />} />
         </Route>
 

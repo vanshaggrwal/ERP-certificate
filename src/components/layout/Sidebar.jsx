@@ -5,6 +5,7 @@ import {
   BookOpen,
   UserPlus,
   Barcode,
+  CircleHelp,
   LogOut,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
@@ -54,6 +55,7 @@ export default function Sidebar() {
       path: "/superadmin/projectcodes",
       icon: Barcode,
     },
+    { label: "Help", path: "/superadmin/help", icon: CircleHelp },
   ];
 
   return (
@@ -94,8 +96,12 @@ export default function Sidebar() {
           </div>
           {expanded && (
             <div className="min-w-0 flex-1 text-left">
-              <p className="truncate text-xl font-semibold leading-tight">{adminName}</p>
-              <span className="block truncate text-sm opacity-80">{adminRoleLabel}</span>
+              <p className="truncate text-xl font-semibold leading-tight">
+                {adminName}
+              </p>
+              <span className="block truncate text-sm opacity-80">
+                {adminRoleLabel}
+              </span>
             </div>
           )}
         </button>
