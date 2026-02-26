@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getStudentsByProject } from "../../../services/studentService";
 import { getProjectCodesByCollege } from "../../../services/projectCodeService";
 import { getCertificatesByIds } from "../../../services/certificateService";
+import { getAllOrganizations } from "../../../services/organizationService";
 
 const getResultStatus = (value) => {
   const normalized = String(value || "")
@@ -24,6 +25,7 @@ export default function Certificates() {
     .toUpperCase();
   const [students, setStudents] = useState([]);
   const [certifications, setCertifications] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -59,11 +61,31 @@ export default function Certificates() {
             }),
           ),
         ];
-        const c =
-          certificateIds.length > 0 ? await getCertificatesByIds(certificateIds) : [];
+        let c = [];
+        if (certificateIds.length > 0) {
+          try {
+            c = await getCertificatesByIds(certificateIds);
+          } catch (certificateError) {
+            console.warn(
+              "Unable to fetch certificate metadata; falling back to student result data:",
+              certificateError,
+            );
+          }
+        }
+
+        let orgRows = [];
+        try {
+          orgRows = await getAllOrganizations();
+        } catch (organizationError) {
+          console.warn(
+            "Unable to fetch organization metadata; proceeding with certificate data only:",
+            organizationError,
+          );
+        }
         if (!mounted) return;
         setStudents(s || []);
         setCertifications(c || []);
+        setOrganizations(orgRows || []);
       } catch (error) {
         console.error("Failed to load certificate data:", error);
       }
@@ -89,6 +111,16 @@ export default function Certificates() {
         certificate,
       ]),
     );
+    const organizationByName = new Map(
+      (organizations || [])
+        .filter((organization) => String(organization?.name || "").trim())
+        .map((organization) => [
+          String(organization.name || "")
+            .trim()
+            .toLowerCase(),
+          organization,
+        ]),
+    );
     const byCertificate = new Map();
 
     (students || []).forEach((student) => {
@@ -110,9 +142,13 @@ export default function Certificates() {
           const current = byCertificate.get(key) || {
             id: key,
             name,
-            platform:
+            domain:
               String(metadata?.platform || "").trim() ||
               String(result?.platform || "").trim() ||
+              "-",
+            organization:
+              String(metadata?.domain || "").trim() ||
+              String(result?.domain || "").trim() ||
               "-",
             examCode:
               String(metadata?.examCode || "").trim() ||
@@ -131,8 +167,19 @@ export default function Certificates() {
           const resultStatus = getResultStatus(result?.status || result?.result);
           if (resultStatus === "passed") current.passedCount += 1;
           if (resultStatus === "failed") current.failedCount += 1;
+          const orgLookupKey = String(current.organization || "")
+            .trim()
+            .toLowerCase();
+          const matchedOrganization =
+            orgLookupKey && organizationByName.get(orgLookupKey)
+              ? organizationByName.get(orgLookupKey)
+              : null;
+          if (matchedOrganization?.name) {
+            current.organization = String(matchedOrganization.name).trim();
+          }
           if (index === 0) {
-            current.platform = current.platform || "-";
+            current.domain = current.domain || "-";
+            current.organization = current.organization || "-";
             current.examCode = current.examCode || "-";
             current.level = current.level || "-";
           }
@@ -148,7 +195,8 @@ export default function Certificates() {
       const current = byCertificate.get(key) || {
         id: key,
         name: legacyName,
-        platform: String(metadata?.platform || "").trim() || "-",
+        domain: String(metadata?.platform || "").trim() || "-",
+        organization: String(metadata?.domain || "").trim() || "-",
         examCode: String(metadata?.examCode || "").trim() || "-",
         level: String(metadata?.level || "").trim() || "-",
         enrolledCount: 0,
@@ -156,12 +204,22 @@ export default function Certificates() {
         failedCount: 0,
       };
       current.enrolledCount += 1;
+      const orgLookupKey = String(current.organization || "")
+        .trim()
+        .toLowerCase();
+      const matchedOrganization =
+        orgLookupKey && organizationByName.get(orgLookupKey)
+          ? organizationByName.get(orgLookupKey)
+          : null;
+      if (matchedOrganization?.name) {
+        current.organization = String(matchedOrganization.name).trim();
+      }
       byCertificate.set(key, current);
     });
 
     return Array.from(byCertificate.values())
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-  }, [students, certifications]);
+  }, [students, certifications, organizations]);
 
   const totalEnrolled = certificateRows.reduce(
     (sum, row) => sum + row.enrolledCount,
@@ -191,7 +249,8 @@ export default function Certificates() {
             <thead>
               <tr className="border-b text-left text-gray-500">
                 <th className="py-2 pr-3">Certificate</th>
-                <th className="py-2 pr-3">Platform</th>
+                <th className="py-2 pr-3">Domain</th>
+                <th className="py-2 pr-3">Organisation</th>
                 <th className="py-2 pr-3">Exam Code</th>
                 <th className="py-2 pr-3">Level</th>
                 <th className="py-2 pr-3">Enrolled Students</th>
@@ -202,7 +261,8 @@ export default function Certificates() {
               {certificateRows.map((row) => (
                 <tr key={row.id} className="border-b">
                   <td className="py-2 pr-3 font-medium">{row.name}</td>
-                  <td className="py-2 pr-3">{row.platform}</td>
+                  <td className="py-2 pr-3">{row.domain}</td>
+                  <td className="py-2 pr-3">{row.organization}</td>
                   <td className="py-2 pr-3">{row.examCode}</td>
                   <td className="py-2 pr-3">{row.level}</td>
                   <td className="py-2 pr-3">{row.enrolledCount}</td>

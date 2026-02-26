@@ -31,6 +31,10 @@ service cloud.firestore {
       return requesterRole() == "collegeadmin";
     }
 
+    function isStudent() {
+      return !isSuperAdmin() && !isCollegeAdmin() && isSignedIn();
+    }
+
     function sameUser(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -39,7 +43,13 @@ service cloud.firestore {
       return isSignedIn() &&
         request.auth.token.email is string &&
         resourceEmail is string &&
-        request.auth.token.email.lower() == resourceEmail.lower();
+        request.auth.token.email == resourceEmail;
+    }
+
+    function sameAuthEmailFromStudentDoc(studentData) {
+      return sameAuthEmail(studentData.email) ||
+        sameAuthEmail(studentData.OFFICIAL_DETAILS["EMAIL ID"]) ||
+        sameAuthEmail(studentData.OFFICIAL_DETAILS["EMAIL ID."]);
     }
 
     function projectDocBelongsToRequester(projectDocId) {
@@ -53,6 +63,13 @@ service cloud.firestore {
     function studentBelongsToRequester(studentData, projectDocId) {
       return ("" + studentData.collegeCode).lower() == requesterCollegeCode() ||
         projectDocBelongsToRequester(projectDocId);
+    }
+
+    function ticketOwnedByRequester(ticketData) {
+      return isSignedIn() && (
+        (ticketData.createdByUid is string && ticketData.createdByUid == request.auth.uid) ||
+        sameAuthEmail(ticketData.createdByEmail)
+      );
     }
 
     match /users/{userId} {
@@ -89,7 +106,12 @@ service cloud.firestore {
     }
 
     match /certificates/{certificateId} {
-      allow read: if isSuperAdmin() || isCollegeAdmin();
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /organizations/{organizationId} {
+      allow read: if isSignedIn();
       allow create, update, delete: if isSuperAdmin();
     }
 
@@ -102,16 +124,46 @@ service cloud.firestore {
         allow read: if isSuperAdmin() ||
           (isCollegeAdmin() &&
             studentBelongsToRequester(resource.data, projectDocId)) ||
-          sameAuthEmail(resource.data.email);
+          sameAuthEmailFromStudentDoc(resource.data);
         allow create, update, delete: if isSuperAdmin();
       }
     }
 
     match /college/{collegeCode} {
-      allow read: if isSuperAdmin() ||
+      allow read: if isStudent() || isSuperAdmin() ||
         (isCollegeAdmin() &&
           ("" + collegeCode).lower() == requesterCollegeCode());
       allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /helpTickets/{ticketId} {
+      allow read: if isSuperAdmin() ||
+        (isCollegeAdmin() && ticketOwnedByRequester(resource.data));
+      allow create: if isCollegeAdmin() &&
+        ticketOwnedByRequester(request.resource.data) &&
+        (request.resource.data.createdByRole is string &&
+          request.resource.data.createdByRole.lower() == "collegeadmin");
+      allow update: if isSuperAdmin() ||
+        (isCollegeAdmin() &&
+          ticketOwnedByRequester(resource.data) &&
+          ticketOwnedByRequester(request.resource.data));
+      allow delete: if isSuperAdmin();
+
+      match /remarks/{remarkId} {
+        allow read: if isSuperAdmin() ||
+          (isCollegeAdmin() &&
+            ticketOwnedByRequester(
+              get(/databases/$(database)/documents/helpTickets/$(ticketId)).data
+            ));
+        allow create: if isSuperAdmin() ||
+          (isCollegeAdmin() &&
+            (request.resource.data.authorUid is string &&
+              request.resource.data.authorUid == request.auth.uid) &&
+            ticketOwnedByRequester(
+              get(/databases/$(database)/documents/helpTickets/$(ticketId)).data
+            ));
+        allow update, delete: if isSuperAdmin();
+      }
     }
   }
 }
