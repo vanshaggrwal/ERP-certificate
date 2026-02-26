@@ -337,55 +337,65 @@ export default function Help() {
 
       {activeTab === "tickets" && (
         <section className="overflow-hidden rounded-xl bg-white shadow">
-          <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1.2fr_0.5fr] gap-3 bg-gray-100 px-4 py-2.5 text-xs font-semibold text-gray-600">
-            <p>Subject</p>
-            <p>Category</p>
-            <p>Priority</p>
-            <p>Status</p>
-            <p>Created</p>
-            <p className="text-right">Action</p>
-          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-180">
+              <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1.2fr_0.5fr] gap-3 bg-gray-100 px-4 py-2.5 text-xs font-semibold text-gray-600">
+                <p>Subject</p>
+                <p>Category</p>
+                <p>Priority</p>
+                <p>Status</p>
+                <p>Created</p>
+                <p className="text-right">Action</p>
+              </div>
 
-          <div className="divide-y">
-            {loadingTickets ? (
-              <p className="px-4 py-4 text-sm text-gray-500">
-                Loading tickets...
-              </p>
-            ) : tickets.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-gray-500">No tickets yet.</p>
-            ) : (
-              tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1.2fr_0.5fr] items-center gap-3 px-4 py-2.5 text-sm"
-                >
-                  <p className="font-medium text-gray-900">{ticket.subject}</p>
-                  <p>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">
-                      {ticket.category}
-                    </span>
+              <div className="divide-y">
+                {loadingTickets ? (
+                  <p className="px-4 py-4 text-sm text-gray-500">
+                    Loading tickets...
                   </p>
-                  <p>
-                    <span className="rounded-full bg-[#0B2A4A] px-2 py-0.5 text-[11px] font-medium text-white">
-                      {ticket.priority}
-                    </span>
+                ) : tickets.length === 0 ? (
+                  <p className="px-4 py-4 text-sm text-gray-500">
+                    No tickets yet.
                   </p>
-                  <p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_CLASS[ticket.status] || "bg-gray-100 text-gray-700"}`}
+                ) : (
+                  tickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1.2fr_0.5fr] items-center gap-3 px-4 py-2.5 text-sm"
                     >
-                      {ticket.status}
-                    </span>
-                  </p>
-                  <p className="text-gray-600">{timeAgo(ticket.createdAt)}</p>
-                  <div className="flex justify-end">
-                    <TicketViewActionButton
-                      onClick={() => openTicketModal(ticket)}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
+                      <p className="font-medium text-gray-900">
+                        {ticket.subject}
+                      </p>
+                      <p>
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">
+                          {ticket.category}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="rounded-full bg-[#0B2A4A] px-2 py-0.5 text-[11px] font-medium text-white">
+                          {ticket.priority}
+                        </span>
+                      </p>
+                      <p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_CLASS[ticket.status] || "bg-gray-100 text-gray-700"}`}
+                        >
+                          {ticket.status}
+                        </span>
+                      </p>
+                      <p className="text-gray-600">
+                        {timeAgo(ticket.createdAt)}
+                      </p>
+                      <div className="flex justify-end">
+                        <TicketViewActionButton
+                          onClick={() => openTicketModal(ticket)}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </section>
       )}

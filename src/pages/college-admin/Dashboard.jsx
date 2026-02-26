@@ -240,19 +240,21 @@ export default function AdminDashboard() {
               Monitor enrollments, performance trends, and certification health.
             </p>
           </div>
-          {collegeInfo.logo && !logoLoadFailed ? (
-            <img
-              src={collegeInfo.logo}
-              alt={collegeInfo.name || "College"}
-              className="max-h-24 w-auto max-w-104 rounded-lg"
-              referrerPolicy="no-referrer"
-              onError={() => setLogoLoadFailed(true)}
-            />
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-[#0B2A4A] text-3xl font-bold text-white">
-              {String(collegeCode || "CLG").slice(0, 2)}
-            </div>
-          )}
+          <div className="hidden md:flex md:items-center">
+            {collegeInfo.logo && !logoLoadFailed ? (
+              <img
+                src={collegeInfo.logo}
+                alt={collegeInfo.name || "College"}
+                className="max-h-24 w-auto max-w-104 rounded-lg"
+                referrerPolicy="no-referrer"
+                onError={() => setLogoLoadFailed(true)}
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-[#0B2A4A] text-3xl font-bold text-white">
+                {String(collegeCode || "CLG").slice(0, 2)}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -359,26 +361,28 @@ export default function AdminDashboard() {
       </div>
 
       <Panel title="Live Student Tracking Table">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500">
-              <th className="py-2">Project Code</th>
-              <th>College</th>
-              <th>Course</th>
-              <th>Year</th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map((p) => (
-              <tr key={p.id || p.code} className="border-t">
-                <td className="py-2">{p.code || p.id}</td>
-                <td>{p.college || "-"}</td>
-                <td>{p.course || p.courseCode || "-"}</td>
-                <td>{p.year || "-"}</td>
+        <div className="overflow-x-auto">
+          <table className="min-w-160 w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500">
+                <th className="py-2">Project Code</th>
+                <th>College</th>
+                <th>Course</th>
+                <th>Year</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {projects.map((p) => (
+                <tr key={p.id || p.code} className="border-t">
+                  <td className="py-2">{p.code || p.id}</td>
+                  <td>{p.college || "-"}</td>
+                  <td>{p.course || p.courseCode || "-"}</td>
+                  <td>{p.year || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Panel>
     </div>
   );
