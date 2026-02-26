@@ -28,6 +28,33 @@ const normalizeCertificateStatus = (status) => {
   return "enrolled";
 };
 
+const getOptimizedLogoUrl = (logoUrl) => {
+  const raw = String(logoUrl || "").trim();
+  if (!raw) return "";
+
+  if (!/res\.cloudinary\.com/i.test(raw)) {
+    return raw;
+  }
+
+  const marker = "/upload/";
+  const markerIndex = raw.indexOf(marker);
+  if (markerIndex === -1) return raw;
+
+  const head = raw.slice(0, markerIndex + marker.length);
+  const tail = raw.slice(markerIndex + marker.length);
+  const [firstSegment = ""] = tail.split("/");
+  const hasTransformation =
+    firstSegment.includes(",") ||
+    (!/^v\d+$/.test(firstSegment) && firstSegment !== "");
+
+  if (hasTransformation) {
+    return raw;
+  }
+
+  const transformation = "e_trim:8,c_fit,w_520,h_220,b_white,q_auto,f_auto";
+  return `${head}${transformation}/${tail}`;
+};
+
 export default function StudentDashboard() {
   const { user, profile } = useAuth();
   const [currentStudent, setCurrentStudent] = useState(null);
@@ -461,6 +488,7 @@ function SnapshotItem({ label, value }) {
 }
 
 function CertificateCard({ certificate }) {
+  const logoUrl = getOptimizedLogoUrl(certificate.organizationLogoUrl);
   const statusLabel = normalizeCertificateStatus(
     certificate.status || "enrolled",
   );
@@ -473,15 +501,17 @@ function CertificateCard({ certificate }) {
 
   return (
     <article className="min-w-[270px] max-w-[300px] flex-1 overflow-hidden rounded-2xl border border-[#D7E2F1] bg-white shadow-sm">
-      <div className="h-24 bg-[#0B2A4A]">
-        {certificate.organizationLogoUrl ? (
-          <img
-            src={certificate.organizationLogoUrl}
-            alt={`${certificate.organizationName || "Organisation"} logo`}
-            className="h-full w-full object-cover"
-          />
+      <div className="flex h-28 items-center justify-center bg-white px-3 py-2">
+        {logoUrl ? (
+          <div className="flex h-20 w-full items-center justify-center rounded-md bg-white">
+            <img
+              src={logoUrl}
+              alt={`${certificate.organizationName || "Organisation"} logo`}
+              className="h-full w-full object-contain object-center"
+            />
+          </div>
         ) : (
-          <div className="h-full w-full flex items-center justify-center">
+          <div className="flex h-20 w-full items-center justify-center rounded-md bg-[#0B2A4A]">
             <p className="text-xs font-medium uppercase tracking-wide text-white/80">
               Certificate
             </p>

@@ -57,12 +57,16 @@ export default function Help() {
   });
 
   const loadTickets = async () => {
-    if (!user?.uid) return;
+    const email = String(user?.email || "")
+      .trim()
+      .toLowerCase();
+    if (!user?.uid && !email) return;
     setLoadingTickets(true);
     try {
       const rows = await getHelpTickets({
         role: "collegeAdmin",
         uid: user.uid,
+        email,
       });
       setTickets(rows || []);
     } catch (error) {
@@ -75,7 +79,7 @@ export default function Help() {
 
   useEffect(() => {
     loadTickets();
-  }, [user?.uid]);
+  }, [user?.uid, user?.email]);
 
   const myTicketsLabel = useMemo(
     () => `My Tickets (${tickets.length})`,
@@ -111,6 +115,9 @@ export default function Help() {
           profile?.college ||
           "",
         createdByUid: user?.uid,
+        createdByEmail: String(user?.email || "")
+          .trim()
+          .toLowerCase(),
         createdByName: profile?.name || user?.email || "College Admin",
         createdByRole: role || "collegeAdmin",
       });

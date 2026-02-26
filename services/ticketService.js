@@ -22,6 +22,26 @@ import {
 const HELP_TICKETS_COLLECTION = "helpTickets";
 const HELP_TICKET_REMARKS_SUBCOLLECTION = "remarks";
 
+const getSortTimestamp = (row = {}) => {
+  const updatedAt = row?.updatedAt;
+  const createdAt = row?.createdAt;
+
+  const updatedTime =
+    typeof updatedAt?.toDate === "function"
+      ? updatedAt.toDate().getTime()
+      : new Date(updatedAt || 0).getTime();
+  if (Number.isFinite(updatedTime) && updatedTime > 0) return updatedTime;
+
+  const createdTime =
+    typeof createdAt?.toDate === "function"
+      ? createdAt.toDate().getTime()
+      : new Date(createdAt || 0).getTime();
+  return Number.isFinite(createdTime) ? createdTime : 0;
+};
+
+const sortTicketsDesc = (rows = []) =>
+  [...rows].sort((a, b) => getSortTimestamp(b) - getSortTimestamp(a));
+
 export const TICKET_CATEGORY_OPTIONS = ["General", "Bugs", "Enquiry"];
 export const TICKET_PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical"];
 export const TICKET_STATUS_OPTIONS = [
@@ -56,6 +76,9 @@ export const createHelpTicket = async (ticketData = {}) => {
     collegeCode: String(ticketData.collegeCode || "").trim(),
     collegeName: String(ticketData.collegeName || "").trim(),
     createdByUid: String(ticketData.createdByUid || "").trim(),
+    createdByEmail: String(ticketData.createdByEmail || "")
+      .trim()
+      .toLowerCase(),
     createdByName: String(ticketData.createdByName || "").trim(),
     createdByRole: String(ticketData.createdByRole || "").trim(),
     createdAt: serverTimestamp(),
@@ -70,32 +93,59 @@ export const createHelpTicket = async (ticketData = {}) => {
   return { id: ticketRef.id, ...payload };
 };
 
-export const getHelpTickets = async ({ role, uid } = {}) => {
+export const getHelpTickets = async ({ role, uid, email } = {}) => {
   if (isLocalDbMode()) {
-    return localGetHelpTickets({ role, createdByUid: uid });
+    return localGetHelpTickets({
+      role,
+      createdByUid: uid,
+      createdByEmail: email,
+    });
   }
 
   const normalizedRole = String(role || "")
     .trim()
     .toLowerCase();
   const normalizedUid = String(uid || "").trim();
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
 
-  let ticketsQuery;
-  if (normalizedRole === "collegeadmin" && normalizedUid) {
-    ticketsQuery = query(
-      collection(db, HELP_TICKETS_COLLECTION),
-      where("createdByUid", "==", normalizedUid),
-      orderBy("updatedAt", "desc"),
-    );
-  } else {
-    ticketsQuery = query(
-      collection(db, HELP_TICKETS_COLLECTION),
-      orderBy("updatedAt", "desc"),
-    );
+  if (normalizedRole === "collegeadmin") {
+    const filteredCollection = collection(db, HELP_TICKETS_COLLECTION);
+
+    if (normalizedUid) {
+      const uidSnapshot = await getDocs(
+        query(filteredCollection, where("createdByUid", "==", normalizedUid)),
+      );
+      return sortTicketsDesc(
+        uidSnapshot.docs.map((docSnap) => normalizeTicket(docSnap)),
+      );
+    }
+
+    if (normalizedEmail) {
+      const emailSnapshot = await getDocs(
+        query(
+          filteredCollection,
+          where("createdByEmail", "==", normalizedEmail),
+        ),
+      );
+      return sortTicketsDesc(
+        emailSnapshot.docs.map((docSnap) => normalizeTicket(docSnap)),
+      );
+    }
+
+    return [];
   }
 
-  const snapshot = await getDocs(ticketsQuery);
-  return snapshot.docs.map((docSnap) => normalizeTicket(docSnap));
+  const snapshot = await getDocs(
+    query(
+      collection(db, HELP_TICKETS_COLLECTION),
+      orderBy("updatedAt", "desc"),
+    ),
+  );
+  return sortTicketsDesc(
+    snapshot.docs.map((docSnap) => normalizeTicket(docSnap)),
+  );
 };
 
 export const updateHelpTicketStatus = async ({ ticketId, status, actor }) => {

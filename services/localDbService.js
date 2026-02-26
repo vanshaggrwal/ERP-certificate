@@ -871,6 +871,9 @@ export const localCreateHelpTicket = async (ticketData = {}) =>
       collegeCode: String(ticketData.collegeCode || "").trim(),
       collegeName: String(ticketData.collegeName || "").trim(),
       createdByUid: String(ticketData.createdByUid || "").trim(),
+      createdByEmail: String(ticketData.createdByEmail || "")
+        .trim()
+        .toLowerCase(),
       createdByName: String(ticketData.createdByName || "").trim(),
       createdByRole: String(ticketData.createdByRole || "").trim(),
       createdAt: now,
@@ -886,13 +889,26 @@ export const localCreateHelpTicket = async (ticketData = {}) =>
 export const localGetHelpTickets = async (filters = {}) => {
   const store = readStore();
   const createdByUid = String(filters?.createdByUid || "").trim();
+  const createdByEmail = String(filters?.createdByEmail || "")
+    .trim()
+    .toLowerCase();
   const role = String(filters?.role || "")
     .trim()
     .toLowerCase();
 
   const rows = Object.values(store.helpTickets || {}).filter((ticket) => {
-    if (role === "collegeadmin" && createdByUid) {
-      return String(ticket.createdByUid || "") === createdByUid;
+    if (role === "collegeadmin") {
+      if (createdByUid) {
+        return String(ticket.createdByUid || "") === createdByUid;
+      }
+      if (createdByEmail) {
+        return (
+          String(ticket.createdByEmail || "")
+            .trim()
+            .toLowerCase() === createdByEmail
+        );
+      }
+      return false;
     }
     return true;
   });
