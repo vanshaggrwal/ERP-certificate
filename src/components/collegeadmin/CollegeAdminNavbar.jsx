@@ -83,7 +83,7 @@ export default function CollegeAdminNavbar({ onMenuClick }) {
 
   return (
     <header className="px-4 pt-4 sm:px-6 md:hidden">
-      <div className="rounded-3xl border border-[#D7E2F1] bg-white px-5 py-4 shadow-sm">
+      <div className="collegeadmin-navbar-card rounded-3xl border border-[#D7E2F1] bg-white px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <button
             type="button"

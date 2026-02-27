@@ -355,7 +355,7 @@ export default function StudentDashboard() {
         />
       </section>
 
-      <section className="rounded-3xl border border-[#D7E2F1] bg-[#EEF3FA] p-5 shadow-sm sm:p-6">
+      <section className="student-navbar-card rounded-3xl border border-[#D7E2F1] bg-[#EEF3FA] p-5 sm:p-6">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
           <div className="space-y-3">
             <h3 className="text-2xl font-semibold text-[#0B2A4A]">

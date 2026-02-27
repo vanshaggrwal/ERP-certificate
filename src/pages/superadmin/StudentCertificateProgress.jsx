@@ -132,7 +132,7 @@ export default function StudentCertificateProgress() {
 
           {!loading && !error && student && (
             <>
-              <section className="rounded-3xl border border-[#D6E1EE] bg-white p-6 shadow-sm">
+              <section className="superadmin-navbar-card rounded-3xl border border-[#D6E1EE] bg-white p-6">
                 <h1 className="text-3xl font-semibold text-[#0B2A4A]">
                   Student Profile
                 </h1>
@@ -174,8 +174,9 @@ export default function StudentCertificateProgress() {
                   student?.projectId ||
                   location.state?.projectCode ||
                   "";
-                const currentYearFromCode =
-                  getCurrentYearFromProjectCode(structuredProjectCode);
+                const currentYearFromCode = getCurrentYearFromProjectCode(
+                  structuredProjectCode,
+                );
                 const currentYear =
                   currentYearFromCode ||
                   student?.currentYear ||

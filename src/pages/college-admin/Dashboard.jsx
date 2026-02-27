@@ -278,7 +278,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-[#D7E2F1] bg-white px-6 py-7 shadow-sm">
+      <section className="collegeadmin-navbar-card rounded-3xl border border-[#D7E2F1] bg-white px-6 py-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-[#0B2A4A]">

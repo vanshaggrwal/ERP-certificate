@@ -95,7 +95,8 @@ export default function StudentProfile() {
   const graduationDetails = student?.GRADUATION_DETAILS || {};
   const postGraduationDetails = student?.POST_GRADUATION_DETAILS || {};
 
-  const fullName = officialDetails["FULL NAME OF STUDENT"] || student?.name || "-";
+  const fullName =
+    officialDetails["FULL NAME OF STUDENT"] || student?.name || "-";
   const rollNo = officialDetails.SN || student?.id || "-";
   const gender = officialDetails.GENDER || student?.gender || "-";
   const dob = officialDetails["BIRTH DATE"] || student?.dob || "-";
@@ -108,8 +109,11 @@ export default function StudentProfile() {
     student?.passingYear ||
     student?.admissionYear ||
     "-";
-  const structuredProjectCode = student?.projectCode || student?.projectId || "";
-  const currentYearFromCode = getCurrentYearFromProjectCode(structuredProjectCode);
+  const structuredProjectCode =
+    student?.projectCode || student?.projectId || "";
+  const currentYearFromCode = getCurrentYearFromProjectCode(
+    structuredProjectCode,
+  );
   const currentYear = currentYearFromCode || student?.currentSemester || "-";
   const seenKeys = new Set(
     [
@@ -126,10 +130,22 @@ export default function StudentProfile() {
     ].map(toCanonicalKey),
   );
 
-  const filteredTenthEntries = getUniqueEntries(Object.entries(tenthDetails), seenKeys);
-  const filteredTwelfthEntries = getUniqueEntries(Object.entries(twelfthDetails), seenKeys);
-  const filteredDiplomaEntries = getUniqueEntries(Object.entries(diplomaDetails), seenKeys);
-  const filteredGraduationEntries = getUniqueEntries(Object.entries(graduationDetails), seenKeys);
+  const filteredTenthEntries = getUniqueEntries(
+    Object.entries(tenthDetails),
+    seenKeys,
+  );
+  const filteredTwelfthEntries = getUniqueEntries(
+    Object.entries(twelfthDetails),
+    seenKeys,
+  );
+  const filteredDiplomaEntries = getUniqueEntries(
+    Object.entries(diplomaDetails),
+    seenKeys,
+  );
+  const filteredGraduationEntries = getUniqueEntries(
+    Object.entries(graduationDetails),
+    seenKeys,
+  );
   const filteredPostGraduationEntries = getUniqueEntries(
     Object.entries(postGraduationDetails),
     seenKeys,
@@ -176,7 +192,10 @@ export default function StudentProfile() {
 
     setPasswordLoading(true);
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword,
+      );
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
 
@@ -212,7 +231,10 @@ export default function StudentProfile() {
     } catch (error) {
       console.error("Failed to update password:", error);
       const code = error?.code || "";
-      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+      if (
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-credential"
+      ) {
         setPasswordError("Current password is incorrect.");
       } else if (code === "auth/weak-password") {
         setPasswordError("New password is too weak.");
@@ -228,13 +250,19 @@ export default function StudentProfile() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 pb-6">
-      <section className="rounded-3xl border border-[#D6E1EE] bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-semibold text-[#0B2A4A]">Student Profile</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your details and academic information.</p>
+      <section className="student-navbar-card rounded-3xl border border-[#D6E1EE] bg-white p-6">
+        <h1 className="text-3xl font-semibold text-[#0B2A4A]">
+          Student Profile
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage your details and academic information.
+        </p>
       </section>
 
       <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">Basic Information</h2>
+        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">
+          Basic Information
+        </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ProfileItem label="Student Name" value={fullName} />
           <ProfileItem label="Roll No" value={rollNo} />
@@ -246,7 +274,9 @@ export default function StudentProfile() {
       </section>
 
       <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">Contact Details</h2>
+        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">
+          Contact Details
+        </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ProfileItem label="Email" value={email} />
           <ProfileItem label="Phone" value={phone} />
@@ -256,15 +286,23 @@ export default function StudentProfile() {
 
       <DetailsSection title="10th Details" entries={filteredTenthEntries} />
       <DetailsSection title="12th Details" entries={filteredTwelfthEntries} />
-      <DetailsSection title="Diploma Details" entries={filteredDiplomaEntries} />
-      <DetailsSection title="Graduation Details" entries={filteredGraduationEntries} />
+      <DetailsSection
+        title="Diploma Details"
+        entries={filteredDiplomaEntries}
+      />
+      <DetailsSection
+        title="Graduation Details"
+        entries={filteredGraduationEntries}
+      />
       <DetailsSection
         title="Post Graduation Details"
         entries={filteredPostGraduationEntries}
       />
 
       <section className="rounded-2xl border border-[#D6E1EE] bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">Change Password</h2>
+        <h2 className="mb-4 text-xl font-semibold text-[#0B2A4A]">
+          Change Password
+        </h2>
 
         {passwordError && (
           <p className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -277,9 +315,14 @@ export default function StudentProfile() {
           </p>
         )}
 
-        <form onSubmit={handlePasswordChange} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <form
+          onSubmit={handlePasswordChange}
+          className="grid grid-cols-1 gap-4 md:grid-cols-3"
+        >
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Current Password</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              Current Password
+            </span>
             <input
               type="password"
               name="currentPassword"
@@ -291,7 +334,9 @@ export default function StudentProfile() {
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">New Password</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              New Password
+            </span>
             <input
               type="password"
               name="newPassword"
@@ -303,7 +348,9 @@ export default function StudentProfile() {
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Confirm New Password</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              Confirm New Password
+            </span>
             <input
               type="password"
               name="confirmPassword"
@@ -325,7 +372,6 @@ export default function StudentProfile() {
           </div>
         </form>
       </section>
-
     </div>
   );
 }
@@ -335,8 +381,12 @@ export default function StudentProfile() {
 function ProfileItem({ label, value }) {
   return (
     <div className="rounded-xl border border-[#D7E2F1] bg-[#EEF3FA] p-4 shadow-sm transition hover:border-[#BCD0E7]">
-      <p className="text-xs uppercase tracking-wide text-[#0B2A4A]/60">{label}</p>
-      <p className="mt-1 text-base font-semibold text-[#0B2A4A]">{value || "-"}</p>
+      <p className="text-xs uppercase tracking-wide text-[#0B2A4A]/60">
+        {label}
+      </p>
+      <p className="mt-1 text-base font-semibold text-[#0B2A4A]">
+        {value || "-"}
+      </p>
     </div>
   );
 }
@@ -361,5 +411,3 @@ function DetailsSection({ title, entries }) {
     </section>
   );
 }
-
- 

@@ -334,7 +334,9 @@ export default function Students() {
   const students = useMemo(() => {
     if (!selectedProjectCode) return [];
     if (certificateOptions.length === 0) return projectStudents;
-    if (!selectedCertificate) return [];
+    // If no certificate is selected, show ALL students
+    if (!selectedCertificate) return projectStudents;
+    // If a certificate is selected, filter to only those enrolled in that cert
     return projectStudents.filter((student) =>
       matchesCertificate(student, selectedCertificate),
     );
@@ -431,8 +433,7 @@ export default function Students() {
             <select
               value={selectedCertificateId}
               onChange={(event) => setSelectedCertificateId(event.target.value)}
-              className={`h-10 w-full rounded-lg border bg-white px-3 text-sm outline-none transition-colors border-[#D7E2F1]
-              ${selectedProjectCode && !selectedCertificateId && !loadingStudents ? "ring-2 ring-yellow-300 border-yellow-500" : ""}`}
+              className="h-10 w-full rounded-lg border border-[#D7E2F1] bg-white px-3 text-sm outline-none transition-colors"
               disabled={
                 !selectedProjectCode || loadingStudents || shouldShowAllStudents
               }
@@ -444,7 +445,7 @@ export default function Students() {
                     ? "Loading certificates..."
                     : shouldShowAllStudents
                       ? "No certificates enrolled"
-                      : "Select certificate"}
+                      : "All Certificates"}
               </option>
               {certificateOptions.map((certificate) => (
                 <option
@@ -458,90 +459,94 @@ export default function Students() {
             {shouldShowAllStudents && (
               <p className="mt-1 text-xs text-blue-600">
                 <em>
-                  No certificates are enrolled for this project code. Showing
-                  full student list.
+                  No certificates enrolled for this project. Showing all
+                  students.
                 </em>
               </p>
             )}
             {selectedProjectCode &&
-              !selectedCertificateId &&
               !loadingStudents &&
               !shouldShowAllStudents && (
-                <p className="mt-1 text-xs text-yellow-600">
-                  <em>Select a certificate to view the student master list.</em>
+                <p className="mt-1 text-xs text-[#415a77]">
+                  <em>
+                    Select a certificate to filter, or leave blank to show all.
+                  </em>
                 </p>
               )}
           </label>
         </div>
       </div>
 
-      {selectedProjectCode &&
-        (selectedCertificateId || shouldShowAllStudents) && (
-          <div className="rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-4 sm:p-5">
-            <div className="mb-2 px-3">
-              <h2 className="text-lg font-semibold text-[#0B2A4A]">
-                Student Master List
-              </h2>
-            </div>
+      {selectedProjectCode && !loadingStudents && (
+        <div className="rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-4 sm:p-5">
+          <div className="mb-2 px-3">
+            <h2 className="text-lg font-semibold text-[#0B2A4A]">
+              Student Master List
+            </h2>
+          </div>
 
-            <div className="overflow-x-auto rounded-xl border border-[#D7E2F1] bg-white">
-              <table className="min-w-full divide-y divide-[#E6EDF6]">
-                <thead className="bg-[#F5F8FD]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Student ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Project Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Email Id
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Current Year
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Certificates
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
-                      Result Status
-                    </th>
+          <div className="overflow-x-auto rounded-xl border border-[#D7E2F1] bg-white">
+            <table className="min-w-full divide-y divide-[#E6EDF6]">
+              <thead className="bg-[#F5F8FD]">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
+                    Student ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
+                    Email Id
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
+                    Current Year
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#0B2A4A]">
+                    Result Status
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-[#E6EDF6] bg-white">
+                {(loadingProjects || loadingStudents || loadingServerPage) && (
+                  <tr className="bg-gray-50">
+                    <td
+                      className="px-6 py-6 text-center text-sm text-gray-500"
+                      colSpan={5}
+                    >
+                      Loading students...
+                    </td>
                   </tr>
-                </thead>
-
-                <tbody className="divide-y divide-[#E6EDF6] bg-white">
-                  {(loadingProjects ||
-                    loadingStudents ||
-                    loadingServerPage) && (
+                )}
+                {!loadingProjects &&
+                  !loadingStudents &&
+                  !loadingServerPage &&
+                  selectedProjectCode &&
+                  displayedStudents.length === 0 && (
                     <tr className="bg-gray-50">
                       <td
                         className="px-6 py-6 text-center text-sm text-gray-500"
-                        colSpan={7}
+                        colSpan={5}
                       >
-                        Loading students...
+                        No students found for the selected filters.
                       </td>
                     </tr>
                   )}
-                  {!loadingProjects &&
-                    !loadingStudents &&
-                    !loadingServerPage &&
-                    selectedProjectCode &&
-                    (selectedCertificateId || shouldShowAllStudents) &&
-                    displayedStudents.length === 0 && (
-                      <tr className="bg-gray-50">
-                        <td
-                          className="px-6 py-6 text-center text-sm text-gray-500"
-                          colSpan={7}
-                        >
-                          No students found for selected project code and
-                          certificate.
-                        </td>
-                      </tr>
-                    )}
-                  {displayedStudents.map((student) => (
+                {displayedStudents.map((student) => {
+                  // Determine which cert items to display based on filter
+                  const certItemsToShow = selectedCertificate
+                    ? (student.certificateItems || []).filter(
+                        (item) =>
+                          String(item.name || "")
+                            .trim()
+                            .toLowerCase() ===
+                          String(selectedCertificate.name || "")
+                            .trim()
+                            .toLowerCase(),
+                      )
+                    : student.certificateItems || [];
+
+                  return (
                     <tr
                       key={`${student.projectCode || student.projectId || "NA"}-${student.id || student.docId || student.email || student.name}`}
                       onClick={() => setSelectedStudent(student)}
@@ -554,15 +559,6 @@ export default function Students() {
                       <td className="wrap-break-word px-6 py-4 text-sm text-[#0B2A4A]">
                         {student.name}
                       </td>
-                      <td
-                        className={`px-6 py-4 wrap-break-word text-sm text-blue-600 transition-colors ${
-                          student.projectCode === selectedProjectCode
-                            ? "font-semibold"
-                            : ""
-                        }`}
-                      >
-                        {student.projectCode || "-"}
-                      </td>
                       <td className="wrap-break-word px-6 py-4 text-sm text-[#0B2A4A]">
                         {student.email}
                       </td>
@@ -571,93 +567,109 @@ export default function Students() {
                           {student.currentYear || "-"}
                         </span>
                       </td>
-                      <td className="wrap-break-word px-6 py-4 text-sm text-[#0B2A4A]">
-                        {student.enrolledCertificates || "-"}
-                      </td>
-                      <td className="wrap-break-word px-6 py-4 text-sm text-[#0B2A4A]">
-                        {student.certificateStatusSummary || "-"}
+                      <td className="px-6 py-4">
+                        {certItemsToShow.length === 0 ? (
+                          <span className="text-sm text-gray-400">-</span>
+                        ) : (
+                          <div className="flex flex-col gap-1.5">
+                            {certItemsToShow.map((item, idx) => {
+                              const statusColor =
+                                item.status === "Passed"
+                                  ? "bg-green-100 text-green-700"
+                                  : item.status === "Failed"
+                                    ? "bg-red-100 text-red-600"
+                                    : "bg-blue-100 text-blue-700";
+                              return (
+                                <span
+                                  key={item.id || idx}
+                                  className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${statusColor}`}
+                                >
+                                  {item.name}: {item.status}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {!loadingProjects &&
-              !loadingStudents &&
-              !loadingServerPage &&
-              ((isServerPaginationMode && (serverHasPrev || serverHasNext)) ||
-                (!isServerPaginationMode && students.length > PAGE_SIZE)) && (
-                <div className="mt-3 flex items-center justify-between px-1">
-                  <p className="text-xs text-[#415a77]">
-                    {isServerPaginationMode
-                      ? `Showing page ${serverCurrentPage}`
-                      : `Showing ${(currentPage - 1) * PAGE_SIZE + 1}-${Math.min(currentPage * PAGE_SIZE, students.length)} of ${students.length}`}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isServerPaginationMode) {
-                          if (!serverHasPrev) return;
-                          const prevCursor =
-                            serverCursorHistory[
-                              serverCursorHistory.length - 1
-                            ] || null;
-                          const nextHistory = serverCursorHistory.slice(0, -1);
-                          loadServerPage({
-                            projectCode: selectedProjectCode,
-                            cursor: prevCursor,
-                            history: nextHistory,
-                          });
-                          return;
-                        }
-                        setCurrentPage((page) => Math.max(1, page - 1));
-                      }}
-                      disabled={
-                        isServerPaginationMode
-                          ? !serverHasPrev
-                          : currentPage === 1
-                      }
-                      className="rounded-lg border border-[#D7E2F1] bg-white px-3 py-1.5 text-xs font-medium text-[#0B2A4A] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs font-medium text-[#0B2A4A]">
-                      {isServerPaginationMode
-                        ? `Page ${serverCurrentPage}`
-                        : `Page ${currentPage} of ${totalPages}`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isServerPaginationMode) {
-                          if (!serverHasNext) return;
-                          loadServerPage({
-                            projectCode: selectedProjectCode,
-                            cursor: serverNextCursor,
-                            history: [...serverCursorHistory, serverCursor],
-                          });
-                          return;
-                        }
-                        setCurrentPage((page) =>
-                          Math.min(totalPages, page + 1),
-                        );
-                      }}
-                      disabled={
-                        isServerPaginationMode
-                          ? !serverHasNext
-                          : currentPage === totalPages
-                      }
-                      className="rounded-lg border border-[#D7E2F1] bg-white px-3 py-1.5 text-xs font-medium text-[#0B2A4A] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {!loadingProjects &&
+            !loadingStudents &&
+            !loadingServerPage &&
+            ((isServerPaginationMode && (serverHasPrev || serverHasNext)) ||
+              (!isServerPaginationMode && students.length > PAGE_SIZE)) && (
+              <div className="mt-3 flex items-center justify-between px-1">
+                <p className="text-xs text-[#415a77]">
+                  {isServerPaginationMode
+                    ? `Showing page ${serverCurrentPage}`
+                    : `Showing ${(currentPage - 1) * PAGE_SIZE + 1}-${Math.min(currentPage * PAGE_SIZE, students.length)} of ${students.length}`}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isServerPaginationMode) {
+                        if (!serverHasPrev) return;
+                        const prevCursor =
+                          serverCursorHistory[serverCursorHistory.length - 1] ||
+                          null;
+                        const nextHistory = serverCursorHistory.slice(0, -1);
+                        loadServerPage({
+                          projectCode: selectedProjectCode,
+                          cursor: prevCursor,
+                          history: nextHistory,
+                        });
+                        return;
+                      }
+                      setCurrentPage((page) => Math.max(1, page - 1));
+                    }}
+                    disabled={
+                      isServerPaginationMode
+                        ? !serverHasPrev
+                        : currentPage === 1
+                    }
+                    className="rounded-lg border border-[#D7E2F1] bg-white px-3 py-1.5 text-xs font-medium text-[#0B2A4A] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-medium text-[#0B2A4A]">
+                    {isServerPaginationMode
+                      ? `Page ${serverCurrentPage}`
+                      : `Page ${currentPage} of ${totalPages}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isServerPaginationMode) {
+                        if (!serverHasNext) return;
+                        loadServerPage({
+                          projectCode: selectedProjectCode,
+                          cursor: serverNextCursor,
+                          history: [...serverCursorHistory, serverCursor],
+                        });
+                        return;
+                      }
+                      setCurrentPage((page) => Math.min(totalPages, page + 1));
+                    }}
+                    disabled={
+                      isServerPaginationMode
+                        ? !serverHasNext
+                        : currentPage === totalPages
+                    }
+                    className="rounded-lg border border-[#D7E2F1] bg-white px-3 py-1.5 text-xs font-medium text-[#0B2A4A] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+        </div>
+      )}
 
       <StudentModal
         student={selectedStudent}
