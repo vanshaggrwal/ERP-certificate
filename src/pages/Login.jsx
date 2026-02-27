@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 
 import { auth } from "../firebase/config";
 import { getDashboardByRole } from "../utils/roleRedirect";
@@ -165,8 +168,12 @@ export default function Login() {
           <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
             {/* Header */}
             <div className="px-6 py-5 border-b border-gray-200 bg-linear-to-r from-[#0B2A4A] to-[#1a3a5c]">
-              <h2 className="text-lg font-semibold text-white">Reset Password</h2>
-              <p className="text-sm text-blue-100 mt-0.5">We'll send a reset link to your email</p>
+              <h2 className="text-lg font-semibold text-white">
+                Reset Password
+              </h2>
+              <p className="text-sm text-blue-100 mt-0.5">
+                We'll send a reset link to your email
+              </p>
             </div>
 
             {/* Body */}
@@ -176,7 +183,11 @@ export default function Login() {
                   <div className="text-4xl">📧</div>
                   <p className="text-gray-800 font-medium">Reset email sent!</p>
                   <p className="text-sm text-gray-500">
-                    Check your inbox at <span className="font-medium text-[#0B2A4A]">{resetEmail}</span> and follow the instructions to reset your password.
+                    Check your inbox at{" "}
+                    <span className="font-medium text-[#0B2A4A]">
+                      {resetEmail}
+                    </span>{" "}
+                    and follow the instructions to reset your password.
                   </p>
                 </div>
               ) : (
