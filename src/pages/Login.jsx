@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 import { auth } from "../firebase/config";
 import { getDashboardByRole } from "../utils/roleRedirect";
@@ -13,6 +13,38 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setResetError("");
+    setResetSuccess(false);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSuccess(true);
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        setResetError("No account found with this email address.");
+      } else {
+        setResetError(err.message || "Failed to send reset email.");
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setResetEmail("");
+    setResetError("");
+    setResetSuccess(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,6 +136,15 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2B46]"
               />
+              <div className="mt-1.5 text-right">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-sm text-[#0F2B46] hover:underline font-medium"
+                >
+                  Forgot Password?
+                </button>
+              </div>
             </div>
 
             {/* Button */}
@@ -117,6 +158,82 @@ export default function Login() {
           </form>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-200 bg-linear-to-r from-[#0B2A4A] to-[#1a3a5c]">
+              <h2 className="text-lg font-semibold text-white">Reset Password</h2>
+              <p className="text-sm text-blue-100 mt-0.5">We'll send a reset link to your email</p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-6">
+              {resetSuccess ? (
+                <div className="text-center space-y-3">
+                  <div className="text-4xl">📧</div>
+                  <p className="text-gray-800 font-medium">Reset email sent!</p>
+                  <p className="text-sm text-gray-500">
+                    Check your inbox at <span className="font-medium text-[#0B2A4A]">{resetEmail}</span> and follow the instructions to reset your password.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  {resetError && (
+                    <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-700">
+                      {resetError}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="Enter your registered email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2B46] text-sm"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={closeForgotModal}
+                      className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={resetLoading}
+                      className="px-5 py-2.5 rounded-lg bg-[#0B2A4A] text-white text-sm font-medium hover:bg-[#0f355b] disabled:opacity-60 transition-colors"
+                    >
+                      {resetLoading ? "Sending..." : "Send Reset Link"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Footer close when success */}
+            {resetSuccess && (
+              <div className="px-6 pb-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={closeForgotModal}
+                  className="px-6 py-2.5 rounded-lg bg-[#0B2A4A] text-white text-sm font-medium hover:bg-[#0f355b] transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
