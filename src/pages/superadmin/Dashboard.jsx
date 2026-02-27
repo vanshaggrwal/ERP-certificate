@@ -303,6 +303,7 @@ export default function Dashboard() {
       student?.certificateResults &&
       typeof student.certificateResults === "object"
         ? Object.values(student.certificateResults)
+            .filter((entry) => !entry?.isDeleted)
             .map((entry) => entry?.certificateId)
             .filter(Boolean)
         : [];

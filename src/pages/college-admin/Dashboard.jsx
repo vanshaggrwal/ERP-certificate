@@ -165,7 +165,9 @@ export default function AdminDashboard() {
           const certificateResults =
             student?.certificateResults &&
             typeof student.certificateResults === "object"
-              ? Object.values(student.certificateResults)
+              ? Object.values(student.certificateResults).filter(
+                  (r) => !r?.isDeleted,
+                )
               : [];
 
           certificateResults.forEach((result) => {

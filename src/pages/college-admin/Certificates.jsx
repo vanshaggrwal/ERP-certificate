@@ -20,7 +20,9 @@ const getResultStatus = (value) => {
 
 export default function Certificates() {
   const { profile } = useAuth();
-  const collegeCode = String(profile?.collegeCode || profile?.college_code || "")
+  const collegeCode = String(
+    profile?.collegeCode || profile?.college_code || "",
+  )
     .trim()
     .toUpperCase();
   const [students, setStudents] = useState([]);
@@ -125,8 +127,11 @@ export default function Certificates() {
 
     (students || []).forEach((student) => {
       const results =
-        student?.certificateResults && typeof student.certificateResults === "object"
-          ? Object.values(student.certificateResults)
+        student?.certificateResults &&
+        typeof student.certificateResults === "object"
+          ? Object.values(student.certificateResults).filter(
+              (r) => !r?.isDeleted,
+            )
           : [];
 
       if (results.length > 0) {
@@ -134,9 +139,12 @@ export default function Certificates() {
           const name = String(result?.certificateName || "").trim();
           if (!name) return;
 
-          const key = String(result?.certificateId || "").trim() || `name:${name.toLowerCase()}`;
+          const key =
+            String(result?.certificateId || "").trim() ||
+            `name:${name.toLowerCase()}`;
           const metadata =
-            (result?.certificateId && metaById.get(String(result.certificateId).trim())) ||
+            (result?.certificateId &&
+              metaById.get(String(result.certificateId).trim())) ||
             metaByName.get(name.toLowerCase()) ||
             null;
           const current = byCertificate.get(key) || {
@@ -164,7 +172,9 @@ export default function Certificates() {
           };
 
           current.enrolledCount += 1;
-          const resultStatus = getResultStatus(result?.status || result?.result);
+          const resultStatus = getResultStatus(
+            result?.status || result?.result,
+          );
           if (resultStatus === "passed") current.passedCount += 1;
           if (resultStatus === "failed") current.failedCount += 1;
           const orgLookupKey = String(current.organization || "")
@@ -217,23 +227,33 @@ export default function Certificates() {
       byCertificate.set(key, current);
     });
 
-    return Array.from(byCertificate.values())
-      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    return Array.from(byCertificate.values()).sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || "")),
+    );
   }, [students, certifications, organizations]);
 
   const totalEnrolled = certificateRows.reduce(
     (sum, row) => sum + row.enrolledCount,
     0,
   );
-  const totalPassed = certificateRows.reduce((sum, row) => sum + row.passedCount, 0);
-  const totalFailed = certificateRows.reduce((sum, row) => sum + row.failedCount, 0);
+  const totalPassed = certificateRows.reduce(
+    (sum, row) => sum + row.passedCount,
+    0,
+  );
+  const totalFailed = certificateRows.reduce(
+    (sum, row) => sum + row.failedCount,
+    0,
+  );
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Certificates</h1>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard title="Configured Certificates" value={certificateRows.length} />
+        <StatCard
+          title="Configured Certificates"
+          value={certificateRows.length}
+        />
         <StatCard title="Total Enrollments" value={totalEnrolled} />
         <ResultSummaryCard
           totalEnrolled={totalEnrolled}

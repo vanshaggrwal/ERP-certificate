@@ -33,6 +33,7 @@ const toDisplayStudent = (student) => {
       : [];
 
   const normalizedCertificates = certificateResults
+    .filter((result) => !result?.isDeleted)
     .map((result) => ({
       id: String(result?.certificateId || "").trim(),
       name: String(result?.certificateName || "").trim(),

@@ -15,7 +15,9 @@ const parseExamNumbers = (examsText) => {
 
 export default function Exams() {
   const { profile } = useAuth();
-  const collegeCode = String(profile?.collegeCode || profile?.college_code || "")
+  const collegeCode = String(
+    profile?.collegeCode || profile?.college_code || "",
+  )
     .trim()
     .toUpperCase();
   const [students, setStudents] = useState([]);
@@ -57,7 +59,9 @@ export default function Exams() {
           ),
         ];
         const certificateMeta =
-          certificateIds.length > 0 ? await getCertificatesByIds(certificateIds) : [];
+          certificateIds.length > 0
+            ? await getCertificatesByIds(certificateIds)
+            : [];
         const metaById = new Map(
           (certificateMeta || []).map((certificate) => [
             String(certificate?.id || "").trim(),
@@ -78,7 +82,9 @@ export default function Exams() {
           const results =
             student?.certificateResults &&
             typeof student.certificateResults === "object"
-              ? Object.values(student.certificateResults)
+              ? Object.values(student.certificateResults).filter(
+                  (r) => !r?.isDeleted,
+                )
               : [];
           results.forEach((result) => {
             const name = String(result?.certificateName || "").trim();
@@ -86,7 +92,9 @@ export default function Exams() {
               const resultId = String(result?.certificateId || "").trim();
               const key = resultId || `name:${name.toLowerCase()}`;
               const metadata =
-                (resultId && metaById.get(resultId)) || metaByName.get(name.toLowerCase()) || null;
+                (resultId && metaById.get(resultId)) ||
+                metaByName.get(name.toLowerCase()) ||
+                null;
               if (!certificatesMap.has(key)) {
                 certificatesMap.set(key, {
                   id: key,
@@ -110,11 +118,13 @@ export default function Exams() {
           }
         });
 
-        const c = Array.from(certificatesMap.values()).map((certificate, index) => ({
-          ...certificate,
-          date: `2026-0${(index % 3) + 3}-${10 + index}`,
-          slot: index % 2 === 0 ? "10:00 AM - 12:00 PM" : "2:00 PM - 4:00 PM",
-        }));
+        const c = Array.from(certificatesMap.values()).map(
+          (certificate, index) => ({
+            ...certificate,
+            date: `2026-0${(index % 3) + 3}-${10 + index}`,
+            slot: index % 2 === 0 ? "10:00 AM - 12:00 PM" : "2:00 PM - 4:00 PM",
+          }),
+        );
         if (!mounted) return;
         setStudents(s || []);
         setCertifications(c || []);
@@ -191,7 +201,9 @@ export default function Exams() {
       </section>
 
       <section className="rounded-xl bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-semibold">Top Students by Attempted Exams</h2>
+        <h2 className="mb-4 text-lg font-semibold">
+          Top Students by Attempted Exams
+        </h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>

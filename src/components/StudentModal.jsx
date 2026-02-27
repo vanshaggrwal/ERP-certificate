@@ -215,7 +215,7 @@ function getCertificateItems(student) {
   const resultMap =
     student?.certificateResults &&
     typeof student.certificateResults === "object"
-      ? Object.values(student.certificateResults)
+      ? Object.values(student.certificateResults).filter((r) => !r?.isDeleted)
       : [];
 
   const items = resultMap
