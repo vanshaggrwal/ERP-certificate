@@ -1,7 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getProjectCodeById } from "../../../services/projectCodeService";
-import { getStudentsByProject } from "../../../services/studentService";
+import {
+  getStudentsByProject,
+  updateStudent,
+} from "../../../services/studentService";
 import { Pencil, RotateCcw } from "lucide-react";
 import SuperAdminLayout from "../../components/layout/SuperAdminLayout";
 import AddStudentModal from "../../components/superadmin/AddStudentModal";
@@ -34,6 +37,10 @@ export default function ProjectCodeStudents() {
   const [error, setError] = useState(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState(null);
   const [filters, setFilters] = useState({
     rollNo: "",
     name: "",
@@ -94,6 +101,94 @@ export default function ProjectCodeStudents() {
       rollNo: "",
       name: "",
     });
+  };
+
+  const handleEditClick = (e, studentDocId) => {
+    e.stopPropagation();
+    const raw = students.find((s) => (s.docId || s.id) === studentDocId);
+    if (!raw) return;
+    setEditingStudent(raw);
+    setEditForm({
+      fullName: raw.OFFICIAL_DETAILS?.["FULL NAME OF STUDENT"] || "",
+      email: raw.OFFICIAL_DETAILS?.["EMAIL ID"] || "",
+      mobile: raw.OFFICIAL_DETAILS?.["MOBILE NO."] || "",
+      dob: raw.OFFICIAL_DETAILS?.["BIRTH DATE"] || "",
+      gender: raw.OFFICIAL_DETAILS?.["GENDER"] || "",
+      tenthPercent: raw.TENTH_DETAILS?.["10th OVERALL MARKS %"] ?? "",
+      twelfthPercent: raw.TWELFTH_DETAILS?.["12th OVERALL MARKS %"] ?? "",
+      diplomaCourse: raw.DIPLOMA_DETAILS?.["DIPLOMA COURSE"] || "",
+      diplomaSpec: raw.DIPLOMA_DETAILS?.["DIPLOMA SPECIALIZATION"] || "",
+      diplomaYear: raw.DIPLOMA_DETAILS?.["DIPLOMA PASSING YR"] || "",
+      diplomaPercent: raw.DIPLOMA_DETAILS?.["DIPLOMA OVERALL MARKS %"] ?? "",
+      ugCourse: raw.GRADUATION_DETAILS?.["GRADUATION COURSE"] || "",
+      ugSpec: raw.GRADUATION_DETAILS?.["GRADUATION SPECIALIZATION"] || "",
+      ugYear: raw.GRADUATION_DETAILS?.["GRADUATION PASSING YR"] || "",
+      ugPercent: raw.GRADUATION_DETAILS?.["GRADUATION OVERALL MARKS %"] ?? "",
+      pgCourse: raw.POST_GRADUATION_DETAILS?.["COURSE"] || "",
+      pgSpec: raw.POST_GRADUATION_DETAILS?.["SPECIALIZATION"] || "",
+      pgYear: raw.POST_GRADUATION_DETAILS?.["PASSING YEAR"] || "",
+      pgPercent: raw.POST_GRADUATION_DETAILS?.["OVERALL MARKS %"] ?? "",
+    });
+    setEditError(null);
+  };
+
+  const handleEditFormChange = (e) =>
+    setEditForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const toNum = (v) => (v !== "" && v !== undefined ? parseFloat(v) : "");
+      const updateData = {
+        OFFICIAL_DETAILS: {
+          ...editingStudent.OFFICIAL_DETAILS,
+          "FULL NAME OF STUDENT": editForm.fullName,
+          "EMAIL ID": editForm.email,
+          "MOBILE NO.": editForm.mobile,
+          "BIRTH DATE": editForm.dob,
+          GENDER: editForm.gender,
+        },
+        TENTH_DETAILS: {
+          ...editingStudent.TENTH_DETAILS,
+          "10th OVERALL MARKS %": toNum(editForm.tenthPercent),
+        },
+        TWELFTH_DETAILS: {
+          ...editingStudent.TWELFTH_DETAILS,
+          "12th OVERALL MARKS %": toNum(editForm.twelfthPercent),
+        },
+        DIPLOMA_DETAILS: {
+          ...editingStudent.DIPLOMA_DETAILS,
+          "DIPLOMA COURSE": editForm.diplomaCourse,
+          "DIPLOMA SPECIALIZATION": editForm.diplomaSpec,
+          "DIPLOMA PASSING YR": editForm.diplomaYear,
+          "DIPLOMA OVERALL MARKS %": toNum(editForm.diplomaPercent),
+        },
+        GRADUATION_DETAILS: {
+          ...editingStudent.GRADUATION_DETAILS,
+          "GRADUATION COURSE": editForm.ugCourse,
+          "GRADUATION SPECIALIZATION": editForm.ugSpec,
+          "GRADUATION PASSING YR": editForm.ugYear,
+          "GRADUATION OVERALL MARKS %": toNum(editForm.ugPercent),
+        },
+        POST_GRADUATION_DETAILS: {
+          ...editingStudent.POST_GRADUATION_DETAILS,
+          COURSE: editForm.pgCourse,
+          SPECIALIZATION: editForm.pgSpec,
+          "PASSING YEAR": editForm.pgYear,
+          "OVERALL MARKS %": toNum(editForm.pgPercent),
+        },
+      };
+      await updateStudent(projectCode.code, editingStudent.id, updateData);
+      setEditingStudent(null);
+      await fetchData();
+    } catch (err) {
+      setEditError("Failed to update student. Please try again.");
+      console.error(err);
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const filteredStudents = students
@@ -235,7 +330,12 @@ export default function ProjectCodeStudents() {
                   <p>{student.twelfthOrDiplomaPercentage ?? "-"}</p>
                   <p>{student.ugPercentage ?? "-"}</p>
                   <p>{student.pgPercentage ?? "-"}</p>
-                  <span className="justify-self-end text-gray-600">
+                  <span
+                    className="justify-self-end text-gray-400 hover:text-[#0B2A4A] transition-colors"
+                    onClick={(e) =>
+                      handleEditClick(e, student.docId || student.id)
+                    }
+                  >
                     <Pencil size={16} />
                   </span>
                 </div>
@@ -257,6 +357,354 @@ export default function ProjectCodeStudents() {
           onClose={() => setShowAddStudentModal(false)}
           onStudentAdded={fetchData}
         />
+      )}
+
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setEditingStudent(null)}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-2xl rounded-2xl border border-[#D7E2F1] bg-[#E9EEF5] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-[#0B2A4A]">
+                  Edit Student
+                </h2>
+                <p className="text-sm text-[#415a77] mt-0.5">
+                  {editingStudent.OFFICIAL_DETAILS?.["FULL NAME OF STUDENT"] ||
+                    editingStudent.id}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStudent(null)}
+                className="rounded-lg p-1.5 text-[#415a77] hover:bg-[#D7E2F1] hover:text-[#0B2A4A] transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mb-4 rounded-lg bg-red-100 p-2.5 text-sm text-red-700">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSave} className="space-y-5">
+              {/* Personal Info */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#415a77] mb-3">
+                  Personal Information
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={editForm.fullName}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={editForm.email}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Mobile No.
+                    </label>
+                    <input
+                      type="tel"
+                      name="mobile"
+                      value={editForm.mobile}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Date of Birth
+                    </label>
+                    <input
+                      type="date"
+                      name="dob"
+                      value={editForm.dob}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Gender
+                    </label>
+                    <select
+                      name="gender"
+                      value={editForm.gender}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    >
+                      <option value="">Select gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Academic Info */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#415a77] mb-3">
+                  Academic Details
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      10th Overall %
+                    </label>
+                    <input
+                      type="number"
+                      name="tenthPercent"
+                      value={editForm.tenthPercent}
+                      onChange={handleEditFormChange}
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      12th Overall %
+                    </label>
+                    <input
+                      type="number"
+                      name="twelfthPercent"
+                      value={editForm.twelfthPercent}
+                      onChange={handleEditFormChange}
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Diploma */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#415a77] mb-3">
+                  Diploma Details
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Course
+                    </label>
+                    <input
+                      type="text"
+                      name="diplomaCourse"
+                      value={editForm.diplomaCourse}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Specialization
+                    </label>
+                    <input
+                      type="text"
+                      name="diplomaSpec"
+                      value={editForm.diplomaSpec}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Passing Year
+                    </label>
+                    <input
+                      type="text"
+                      name="diplomaYear"
+                      value={editForm.diplomaYear}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Overall %
+                    </label>
+                    <input
+                      type="number"
+                      name="diplomaPercent"
+                      value={editForm.diplomaPercent}
+                      onChange={handleEditFormChange}
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Graduation */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#415a77] mb-3">
+                  Graduation Details
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Course
+                    </label>
+                    <input
+                      type="text"
+                      name="ugCourse"
+                      value={editForm.ugCourse}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Specialization
+                    </label>
+                    <input
+                      type="text"
+                      name="ugSpec"
+                      value={editForm.ugSpec}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Passing Year
+                    </label>
+                    <input
+                      type="text"
+                      name="ugYear"
+                      value={editForm.ugYear}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Overall %
+                    </label>
+                    <input
+                      type="number"
+                      name="ugPercent"
+                      value={editForm.ugPercent}
+                      onChange={handleEditFormChange}
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Post Graduation */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#415a77] mb-3">
+                  Post Graduation Details
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Course
+                    </label>
+                    <input
+                      type="text"
+                      name="pgCourse"
+                      value={editForm.pgCourse}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Specialization
+                    </label>
+                    <input
+                      type="text"
+                      name="pgSpec"
+                      value={editForm.pgSpec}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Passing Year
+                    </label>
+                    <input
+                      type="text"
+                      name="pgYear"
+                      value={editForm.pgYear}
+                      onChange={handleEditFormChange}
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#0B2A4A]">
+                      Overall %
+                    </label>
+                    <input
+                      type="number"
+                      name="pgPercent"
+                      value={editForm.pgPercent}
+                      onChange={handleEditFormChange}
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      className="h-10 w-full rounded-lg border border-[#CBD8EA] bg-white px-3 text-sm outline-none focus:border-[#0B2A4A]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="rounded-lg border border-[#CBD8EA] bg-white px-4 py-2 text-sm font-semibold text-[#0B2A4A] hover:bg-[#D7E2F1] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="rounded-lg bg-[#0B2A4A] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0f355b] disabled:opacity-60 transition-colors"
+                >
+                  {editLoading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {showImportModal && (

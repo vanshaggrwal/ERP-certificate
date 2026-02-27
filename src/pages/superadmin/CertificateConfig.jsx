@@ -32,6 +32,18 @@ export default function CertificateConfig() {
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [deletingCertificateId, setDeletingCertificateId] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const [filters, setFilters] = useState({
     platform: "All",
     level: "All",
@@ -348,7 +360,7 @@ export default function CertificateConfig() {
               {filteredCertifications.map((c) => (
                 <div
                   key={c.id}
-                  className="relative flex cursor-pointer items-center justify-between rounded-xl border border-[#D7E2F1] bg-white px-4 py-2.5 text-sm text-[#0B2A4A] transition-colors hover:bg-gray-50 hover:transform-none! hover:shadow-none!"
+                  className={`relative flex cursor-pointer items-center justify-between rounded-xl border border-[#D7E2F1] bg-white px-4 py-2.5 text-sm text-[#0B2A4A] transition-colors hover:bg-gray-50 hover:transform-none! hover:shadow-none! ${openMenuId === c.id ? "z-50" : "z-0"}`}
                 >
                   <div className="grid w-full grid-cols-6 text-sm">
                     <span className="flex items-center gap-2">
@@ -380,67 +392,96 @@ export default function CertificateConfig() {
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedCertificate(c);
-                      setOpenMenuId(openMenuId === c.id ? null : c.id);
-                    }}
-                    className="ml-4 text-gray-600 hover:text-black"
-                    title="Manage certificate"
+                  <div
+                    ref={openMenuId === c.id ? menuRef : null}
+                    className="relative"
                   >
-                    <Pencil size={16} />
-                  </button>
-                  {openMenuId === c.id && (
-                    <div className="absolute right-12 mt-1 w-48 bg-white rounded-xl shadow-lg border z-20">
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setEditingCertificate(c);
-                          setShowAddModal(true);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 border-b"
-                      >
-                        ✏️ Edit Certificate
-                      </button>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedCertificate(c);
-                          setShowDeclareResultModal(true);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full px-4 py-2 text-sm text-left hover:bg-blue-50 border-b"
-                      >
-                        📋 Declare Result
-                      </button>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedCertificate(c);
-                          setShowEnrollModal(true);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 border-b"
-                      >
-                        🏆 Enroll Project Code
-                      </button>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleSoftDeleteCertificate(c);
-                        }}
-                        disabled={deletingCertificateId === c.id}
-                        className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 disabled:opacity-60"
-                      >
-                        {deletingCertificateId === c.id
-                          ? "Deleting..."
-                          : "🗑️ Soft Delete"}
-                      </button>
-                    </div>
-                  )}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedCertificate(c);
+                        setOpenMenuId(openMenuId === c.id ? null : c.id);
+                      }}
+                      className={`ml-4 flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                        openMenuId === c.id
+                          ? "bg-[#0B2A4A] text-white"
+                          : "text-[#415a77] hover:bg-[#E9EEF5] hover:text-[#0B2A4A]"
+                      }`}
+                      title="Manage certificate"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    {openMenuId === c.id && (
+                      <div className="absolute right-0 top-10 z-30 w-52 overflow-hidden rounded-2xl border border-[#D7E2F1] bg-white shadow-xl">
+                        <div className="border-b border-[#E9EEF5] px-4 py-2.5">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-[#415a77]">
+                            {c.name}
+                          </p>
+                        </div>
+                        <div className="py-1.5">
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEditingCertificate(c);
+                              setShowAddModal(true);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-[#0B2A4A] transition-colors hover:bg-[#F0F5FF]"
+                          >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E9EEF5] text-base">
+                              ✏️
+                            </span>
+                            Edit Certificate
+                          </button>
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCertificate(c);
+                              setShowDeclareResultModal(true);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-[#0B2A4A] transition-colors hover:bg-[#F0F5FF]"
+                          >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E9EEF5] text-base">
+                              📋
+                            </span>
+                            Declare Result
+                          </button>
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCertificate(c);
+                              setShowEnrollModal(true);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-[#0B2A4A] transition-colors hover:bg-[#F0F5FF]"
+                          >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E9EEF5] text-base">
+                              🏆
+                            </span>
+                            Enroll Project Code
+                          </button>
+                          <div className="mx-3 my-1 border-t border-[#E9EEF5]" />
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleSoftDeleteCertificate(c);
+                            }}
+                            disabled={deletingCertificateId === c.id}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-base">
+                              🗑️
+                            </span>
+                            {deletingCertificateId === c.id
+                              ? "Deleting..."
+                              : "Soft Delete"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
