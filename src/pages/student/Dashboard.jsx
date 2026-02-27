@@ -140,7 +140,11 @@ export default function StudentDashboard() {
 
       const certificateIdSet = new Set(
         Array.isArray(currentStudent.certificateIds)
-          ? currentStudent.certificateIds.filter(Boolean)
+          ? currentStudent.certificateIds.filter((id) => {
+              // Exclude IDs whose certificateResult entry is marked isDeleted
+              const entry = resultMap[id];
+              return id && (!entry || !entry.isDeleted);
+            })
           : [],
       );
 
