@@ -55,7 +55,7 @@ async function commitInChunks(ops) {
 // Certificate CRUD
 // ---------------------------------------------------------------------------
 
-export const getAllCertificates = async () => {
+export const getAllCertificates = async ({ includeInactive = false } = {}) => {
   if (isLocalDbMode()) {
     return localGetAllCertificates();
   }
@@ -71,7 +71,9 @@ export const getAllCertificates = async () => {
     });
 
     return certificates
-      .filter((certificate) => (certificate?.isActive ?? true) !== false)
+      .filter((certificate) =>
+        includeInactive ? true : (certificate?.isActive ?? true) !== false,
+      )
       .sort((a, b) => {
         const aTime = a.createdAt?.toDate?.()?.getTime?.() || 0;
         const bTime = b.createdAt?.toDate?.()?.getTime?.() || 0;

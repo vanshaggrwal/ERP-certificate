@@ -5,6 +5,22 @@ import {
   enrollStudentsIntoCertificate,
 } from "../../../services/certificateService";
 
+/**
+ * Normalise an exam code for comparison:
+ * - trim whitespace
+ * - collapse internal spaces
+ * - replace en-dash, em-dash and other dash variants with a regular hyphen
+ * - uppercase
+ */
+const normalizeExamCode = (code) =>
+  String(code || "")
+    .trim()
+    // replace any Unicode dash variant with a plain ASCII hyphen
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")
+    // collapse internal whitespace
+    .replace(/\s+/g, "")
+    .toUpperCase();
+
 export default function AssignCertificateModal({
   projectCode,
   onClose,
@@ -87,33 +103,45 @@ export default function AssignCertificateModal({
       setParsedRows(extracted);
 
       // Step 2: Match exam codes to certificates in DB
-      const allCerts = await getAllCertificates();
+      // Use includeInactive:true so certs that were temporarily deactivated
+      // still match during enrollment.
+      const allCerts = await getAllCertificates({ includeInactive: true });
       const certByExamCode = new Map();
       allCerts.forEach((cert) => {
-        const code = String(cert.examCode || "")
-          .trim()
-          .toUpperCase();
+        const code = normalizeExamCode(cert.examCode);
         if (code) {
           certByExamCode.set(code, cert);
         }
       });
 
-      // Group emails by exam code → certificate
+      // Group emails by certificate; separately track codes with no match at all
       const certEmailsMap = new Map(); // certId → {cert, emails:[]}
+      const matchedCodes = new Set();
       const unmatchedCodes = new Set();
 
       extracted.forEach(({ email, examCode }) => {
-        const normalizedCode = examCode.toUpperCase();
+        const normalizedCode = normalizeExamCode(examCode);
         const cert = certByExamCode.get(normalizedCode);
         if (!cert) {
           unmatchedCodes.add(examCode);
           return;
         }
+        matchedCodes.add(normalizedCode);
+        unmatchedCodes.delete(examCode); // remove if a later row matched it
         if (!certEmailsMap.has(cert.id)) {
           certEmailsMap.set(cert.id, { cert, emails: [] });
         }
         certEmailsMap.get(cert.id).emails.push(email);
       });
+
+      // Remove any code from unmatched that was later matched
+      matchedCodes.forEach((code) => unmatchedCodes.delete(code));
+      // Also purge from unmatchedCodes any raw code whose normalized form was matched
+      for (const raw of Array.from(unmatchedCodes)) {
+        if (matchedCodes.has(normalizeExamCode(raw))) {
+          unmatchedCodes.delete(raw);
+        }
+      }
 
       if (unmatchedCodes.size > 0 && certEmailsMap.size === 0) {
         setError(
