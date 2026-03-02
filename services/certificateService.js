@@ -278,7 +278,7 @@ export const softDeleteCertificate = async ({ certificateId }) => {
 
 // ---------------------------------------------------------------------------
 // Enroll selected students into a certificate (via email list)
-// Path: students/{projectDocId}/students_list/{studentId}/certificate_enrollments/{certificateId}
+// Path: students/{projectDocId}/certificate_enrollments/{studentId}_{certificateId}
 // ---------------------------------------------------------------------------
 
 export const enrollStudentsIntoCertificate = async ({
@@ -327,15 +327,13 @@ export const enrollStudentsIntoCertificate = async ({
       if (!studentEmail || !emailSet.has(studentEmail)) continue;
       matchedCount += 1;
 
-      // Check if already enrolled
+      // Check if already enrolled — doc lives directly under project doc
       const enrollmentRef = doc(
         db,
         STUDENTS_COLLECTION,
         projectDocId,
-        "students_list",
-        studentDoc.id,
         CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
-        certificateId,
+        `${studentDoc.id}_${certificateId}`,
       );
       const existingEnrollment = await getDoc(enrollmentRef);
       if (
@@ -423,11 +421,14 @@ export const getCertificatesForProjectCode = async (projectCode) => {
     const normalizedProjectCode = String(projectCode || "").trim();
     if (!normalizedProjectCode) return [];
 
-    const enrollmentsQuery = query(
-      collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
-      where("projectCode", "==", normalizedProjectCode),
+    const projectDocId = codeToDocId(normalizedProjectCode);
+    const enrollmentsRef = collection(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
     );
-    const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
+    const enrollmentsSnapshot = await getDocs(enrollmentsRef);
 
     if (enrollmentsSnapshot.empty) return [];
 
@@ -474,7 +475,7 @@ export const getCertificatesForProjectCode = async (projectCode) => {
 
 // ---------------------------------------------------------------------------
 // Get students enrolled in a specific certificate under a project code
-// Uses composite collectionGroup index on certificateId + projectCode (deployed)
+// Direct collection query on students/{projectDocId}/certificate_enrollments
 // ---------------------------------------------------------------------------
 
 export const getStudentsByCertificateInProject = async (
@@ -483,23 +484,38 @@ export const getStudentsByCertificateInProject = async (
 ) => {
   try {
     const normalizedProjectCode = String(projectCode || "").trim();
+    const projectDocId = codeToDocId(normalizedProjectCode);
 
+    // Direct collection query — no collectionGroup needed
+    const enrollmentsRef = collection(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
+    );
     const enrollmentsQuery = query(
-      collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
+      enrollmentsRef,
       where("certificateId", "==", certificateId),
-      where("projectCode", "==", normalizedProjectCode),
     );
     const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
 
     if (enrollmentsSnapshot.empty) return [];
 
-    // Collect student doc paths and enrollment data
+    // Fetch each student doc by studentId stored in the enrollment
     const studentFetches = enrollmentsSnapshot.docs
       .filter((d) => !d.data()?.isDeleted)
       .map(async (enrollmentDoc) => {
         const enrollmentData = enrollmentDoc.data();
-        // Parent chain: students/{projectDocId}/students_list/{studentId}/certificate_enrollments/{certId}
-        const studentRef = enrollmentDoc.ref.parent.parent;
+        const studentId = enrollmentData.studentId;
+        if (!studentId) return null;
+
+        const studentRef = doc(
+          db,
+          STUDENTS_COLLECTION,
+          projectDocId,
+          "students_list",
+          studentId,
+        );
         const studentSnap = await getDoc(studentRef);
         if (!studentSnap.exists()) return null;
         return {
@@ -564,13 +580,18 @@ export const unenrollStudentsFromCertificate = async ({
     const normalizedProjectCode = String(projectCode || "").trim();
     const projectDocId = codeToDocId(normalizedProjectCode);
 
-    const studentsList = collection(
+    // Query enrollments directly by certificateId
+    const enrollmentsRef = collection(
       db,
       STUDENTS_COLLECTION,
       projectDocId,
-      "students_list",
+      CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
     );
-    const studentsSnapshot = await getDocs(studentsList);
+    const enrollmentsQuery = query(
+      enrollmentsRef,
+      where("certificateId", "==", certificateId),
+    );
+    const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
 
     const emailSet = studentEmails
       ? new Set(studentEmails.map((e) => String(e).trim().toLowerCase()))
@@ -579,39 +600,25 @@ export const unenrollStudentsFromCertificate = async ({
     const ops = [];
     let unenrolledCount = 0;
 
-    for (const studentDoc of studentsSnapshot.docs) {
-      const studentData = studentDoc.data();
-      const studentEmail = String(
-        studentData.OFFICIAL_DETAILS?.["EMAIL_ID"] || studentData.email || "",
-      )
+    enrollmentsSnapshot.forEach((enrollmentDoc) => {
+      const data = enrollmentDoc.data();
+      if (data.isDeleted || data.status === "unenrolled") return;
+
+      const enrollmentEmail = String(data.email || "")
         .trim()
         .toLowerCase();
-
-      if (emailSet && !emailSet.has(studentEmail)) continue;
-
-      const enrollmentRef = doc(
-        db,
-        STUDENTS_COLLECTION,
-        projectDocId,
-        "students_list",
-        studentDoc.id,
-        CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
-        certificateId,
-      );
-
-      const existingEnrollment = await getDoc(enrollmentRef);
-      if (!existingEnrollment.exists()) continue;
+      if (emailSet && !emailSet.has(enrollmentEmail)) return;
 
       ops.push({
         type: "update",
-        ref: enrollmentRef,
+        ref: enrollmentDoc.ref,
         data: {
           status: "unenrolled",
           updatedAt: new Date(),
         },
       });
       unenrolledCount += 1;
-    }
+    });
 
     if (unenrolledCount > 0) {
       ops.push({
@@ -647,12 +654,18 @@ export const declareResultsForCertificate = async ({
 
     for (const projectCode of projectCodes) {
       const normalizedProjectCode = String(projectCode).trim();
+      const projectDocId = codeToDocId(normalizedProjectCode);
 
-      // Query only the enrolled students for this cert+project — no full scan
+      // Direct collection query — no collectionGroup needed
+      const enrollmentsRef = collection(
+        db,
+        STUDENTS_COLLECTION,
+        projectDocId,
+        CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
+      );
       const enrollmentsQuery = query(
-        collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
+        enrollmentsRef,
         where("certificateId", "==", certificateId),
-        where("projectCode", "==", normalizedProjectCode),
       );
       const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
 
@@ -705,11 +718,15 @@ export const getCertificateEnrollmentStatsByProject = async (projectCode) => {
     return new Map();
   }
   try {
-    const q = query(
-      collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
-      where("projectCode", "==", String(projectCode || "").trim()),
+    const normalizedProjectCode = String(projectCode || "").trim();
+    const projectDocId = codeToDocId(normalizedProjectCode);
+    const enrollmentsRef = collection(
+      db,
+      STUDENTS_COLLECTION,
+      projectDocId,
+      CERTIFICATE_ENROLLMENTS_SUBCOLLECTION,
     );
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(enrollmentsRef);
     const statsMap = new Map();
 
     snapshot.forEach((enrollDoc) => {
