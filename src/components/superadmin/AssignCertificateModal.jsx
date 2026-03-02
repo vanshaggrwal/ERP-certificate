@@ -1,23 +1,18 @@
-import { useState } from "react";
-import { read, utils } from "xlsx";
+import { useState, useRef } from "react";
 import {
   getAllCertificates,
   enrollStudentsIntoCertificate,
 } from "../../../services/certificateService";
+import * as XLSX from "xlsx";
 
-/**
- * Normalise an exam code for comparison:
- * - trim whitespace
- * - collapse internal spaces
- * - replace en-dash, em-dash and other dash variants with a regular hyphen
- * - uppercase
- */
+// ---------------------------------------------------------------------------
+// Normalize exam codes: replace Unicode dash variants → ASCII hyphen,
+// collapse internal whitespace, uppercase.  Prevents AZ–900 vs AZ-900 mismatches.
+// ---------------------------------------------------------------------------
 const normalizeExamCode = (code) =>
   String(code || "")
     .trim()
-    // replace any Unicode dash variant with a plain ASCII hyphen
     .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")
-    // collapse internal whitespace
     .replace(/\s+/g, "")
     .toUpperCase();
 
@@ -26,123 +21,159 @@ export default function AssignCertificateModal({
   onClose,
   onAssigned,
 }) {
-  const [step, setStep] = useState("upload"); // "upload" | "confirm" | "processing" | "complete"
+  const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [parsedRows, setParsedRows] = useState([]); // [{email, examCode}]
-  const [matchedCertificates, setMatchedCertificates] = useState([]); // [{cert, emails}]
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
   const [results, setResults] = useState(null);
+  const fileInputRef = useRef(null);
 
-  // Step 1: Parse Excel with EMAIL and EXAM_CODE columns
-  const handleExcelUpload = async (file) => {
+  // -----------------------------------------------------------------------
+  // Parse Excel and enroll students
+  // -----------------------------------------------------------------------
+  const handleExcelUpload = async () => {
+    if (!file) {
+      setError("Please select an Excel/CSV file.");
+      return;
+    }
+    if (!projectCode) {
+      setError("No project code provided.");
+      return;
+    }
+
     setLoading(true);
-    setError(null);
+    setError("");
+    setStatus("Reading file…");
+    setResults(null);
 
     try {
+      // 1. Read file → rows
       const data = await file.arrayBuffer();
-      const workbook = read(data);
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const rows = utils.sheet_to_json(sheet, { defval: null });
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-      if (!rows || rows.length === 0) {
-        setError("Excel file is empty");
+      if (!rows.length) {
+        setError("The spreadsheet is empty.");
         setLoading(false);
         return;
       }
 
-      // Find EMAIL column
-      const emailKey = Object.keys(rows[0]).find((k) =>
-        k.toLowerCase().includes("email"),
+      // 2. Detect columns (case-insensitive header matching)
+      const headers = Object.keys(rows[0]).map((h) =>
+        String(h).trim().toUpperCase(),
       );
-      if (!emailKey) {
-        setError("Excel must contain an EMAIL column");
-        setLoading(false);
-        return;
-      }
+      const rawHeaders = Object.keys(rows[0]);
 
-      // Find EXAM_CODE column
-      const examCodeKey = Object.keys(rows[0]).find(
-        (k) =>
-          k.toLowerCase().includes("exam") &&
-          (k.toLowerCase().includes("code") || k.toLowerCase().includes("id")),
+      const emailColIdx = headers.findIndex(
+        (h) =>
+          h === "EMAIL" ||
+          h === "EMAIL ID" ||
+          h === "EMAIL_ID" ||
+          h === "EMAILID" ||
+          h === "EMAIL ADDRESS",
       );
-      if (!examCodeKey) {
+      const examCodeColIdx = headers.findIndex(
+        (h) =>
+          h === "EXAM CODE" ||
+          h === "EXAM_CODE" ||
+          h === "EXAMCODE" ||
+          h === "EXAM" ||
+          h === "CERTIFICATE CODE" ||
+          h === "CERT CODE",
+      );
+
+      if (emailColIdx === -1) {
         setError(
-          'Excel must contain an EXAM CODE column (header containing "exam" and "code")',
+          'Missing required column: "EMAIL" (or "EMAIL ID" / "EMAIL_ID"). Check your header row.',
+        );
+        setLoading(false);
+        return;
+      }
+      if (examCodeColIdx === -1) {
+        setError(
+          'Missing required column: "EXAM CODE" (or "EXAM_CODE" / "EXAMCODE"). Check your header row.',
         );
         setLoading(false);
         return;
       }
 
-      // Extract rows — a single EXAM_CODE cell may contain multiple codes
-      // separated by commas, e.g. "AZ-900, SC-900, DP-900"
+      const emailCol = rawHeaders[emailColIdx];
+      const examCodeCol = rawHeaders[examCodeColIdx];
+
+      // 3. Extract { email, examCode } entries — support comma-separated exam codes
       const extracted = [];
-      rows.forEach((row) => {
-        const email = String(row[emailKey] || "")
+      for (const row of rows) {
+        const email = String(row[emailCol] || "")
           .trim()
           .toLowerCase();
-        const rawCodes = String(row[examCodeKey] || "").trim();
-        if (!email || !rawCodes) return;
+        if (!email) continue;
 
-        rawCodes
+        const rawCodes = String(row[examCodeCol] || "").trim();
+        if (!rawCodes) continue;
+
+        // Comma-separated support: "AZ-900, SC-900, DP-900"
+        const codes = rawCodes
           .split(",")
           .map((c) => c.trim())
-          .filter(Boolean)
-          .forEach((examCode) => {
-            extracted.push({ email, examCode });
-          });
-      });
+          .filter(Boolean);
+        for (const code of codes) {
+          extracted.push({ email, examCode: code });
+        }
+      }
 
-      if (extracted.length === 0) {
-        setError("No valid rows with both email and exam code found");
+      if (!extracted.length) {
+        setError(
+          "No valid rows found. Each row needs an email and at least one exam code.",
+        );
         setLoading(false);
         return;
       }
 
-      setParsedRows(extracted);
+      setStatus(
+        `Parsed ${extracted.length} email–exam‑code pairs. Loading certificates…`,
+      );
 
-      // Step 2: Match exam codes to certificates in DB
-      // Use includeInactive:true so certs that were temporarily deactivated
-      // still match during enrollment.
+      // 4. Fetch ALL certificates (including inactive) and build lookup
       const allCerts = await getAllCertificates({ includeInactive: true });
       const certByExamCode = new Map();
       allCerts.forEach((cert) => {
         const code = normalizeExamCode(cert.examCode);
-        if (code) {
-          certByExamCode.set(code, cert);
-        }
+        if (code) certByExamCode.set(code, cert);
       });
 
-      // Group emails by certificate; separately track codes with no match at all
-      const certEmailsMap = new Map(); // certId → {cert, emails:[]}
+      // 5. Map each extracted row to the right certificate
+      const certEmailsMap = new Map(); // certId → { cert, emails: Set }
       const matchedCodes = new Set();
       const unmatchedCodes = new Set();
 
       extracted.forEach(({ email, examCode }) => {
         const normalizedCode = normalizeExamCode(examCode);
         const cert = certByExamCode.get(normalizedCode);
+
         if (!cert) {
           unmatchedCodes.add(examCode);
           return;
         }
+
         matchedCodes.add(normalizedCode);
         unmatchedCodes.delete(examCode); // remove if a later row matched it
+
         if (!certEmailsMap.has(cert.id)) {
-          certEmailsMap.set(cert.id, { cert, emails: [] });
+          certEmailsMap.set(cert.id, { cert, emails: new Set() });
         }
-        certEmailsMap.get(cert.id).emails.push(email);
+        certEmailsMap.get(cert.id).emails.add(email);
       });
 
-      // Remove any code from unmatched that was later matched
+      // Purge from unmatchedCodes any raw code whose normalized form was matched
       matchedCodes.forEach((code) => unmatchedCodes.delete(code));
-      // Also purge from unmatchedCodes any raw code whose normalized form was matched
       for (const raw of Array.from(unmatchedCodes)) {
         if (matchedCodes.has(normalizeExamCode(raw))) {
           unmatchedCodes.delete(raw);
         }
       }
 
+      // 6. Warn / abort
       if (unmatchedCodes.size > 0 && certEmailsMap.size === 0) {
         setError(
           `No matching certificates found. Unmatched exam codes: ${Array.from(unmatchedCodes).join(", ")}`,
@@ -151,231 +182,226 @@ export default function AssignCertificateModal({
         return;
       }
 
-      const matched = Array.from(certEmailsMap.values());
-      setMatchedCertificates(matched);
-
+      let warningMsg = "";
       if (unmatchedCodes.size > 0) {
-        setError(
-          `Warning: ${unmatchedCodes.size} unmatched exam code(s): ${Array.from(unmatchedCodes).join(", ")}. Proceeding with matched certificates.`,
-        );
+        warningMsg = `Warning: ${unmatchedCodes.size} unmatched exam code(s): ${Array.from(unmatchedCodes).join(", ")}. Proceeding with matched certificates.`;
       }
 
-      setStep("confirm");
+      // 7. Enroll per certificate
+      setStatus(
+        `Enrolling students into ${certEmailsMap.size} certificate(s)…`,
+      );
+      const enrollResults = [];
+
+      for (const [certId, { cert, emails }] of certEmailsMap) {
+        try {
+          const result = await enrollStudentsIntoCertificate({
+            certificateId: certId,
+            certificateName: cert.name || "",
+            examCode: cert.examCode || "",
+            projectCode,
+            studentEmails: Array.from(emails),
+          });
+          enrollResults.push({
+            certName: cert.name || cert.examCode || certId,
+            ...result,
+          });
+        } catch (enrollErr) {
+          console.error(`Enrollment failed for ${certId}:`, enrollErr);
+          enrollResults.push({
+            certName: cert.name || cert.examCode || certId,
+            enrolledCount: 0,
+            matchedCount: 0,
+            alreadyEnrolledCount: 0,
+            error: enrollErr.message,
+          });
+        }
+      }
+
+      // 8. Build summary
+      const totalEnrolled = enrollResults.reduce(
+        (s, r) => s + (r.enrolledCount || 0),
+        0,
+      );
+      const totalAlready = enrollResults.reduce(
+        (s, r) => s + (r.alreadyEnrolledCount || 0),
+        0,
+      );
+      const totalMatched = enrollResults.reduce(
+        (s, r) => s + (r.matchedCount || 0),
+        0,
+      );
+      const totalErrors = enrollResults.filter((r) => r.error).length;
+
+      setResults({ enrollResults, totalEnrolled, totalAlready, totalMatched });
+
+      let summaryParts = [];
+      summaryParts.push(`${totalEnrolled} student(s) enrolled`);
+      if (totalAlready > 0)
+        summaryParts.push(`${totalAlready} already enrolled`);
+      if (totalMatched > totalEnrolled + totalAlready)
+        summaryParts.push(
+          `${totalMatched - totalEnrolled - totalAlready} email(s) not found in project`,
+        );
+      if (totalErrors > 0)
+        summaryParts.push(`${totalErrors} certificate(s) had errors`);
+
+      let finalMsg = "Done! " + summaryParts.join(", ") + ".";
+      if (warningMsg) finalMsg = warningMsg + "\n\n" + finalMsg;
+
+      setStatus(finalMsg);
+
+      if (totalEnrolled > 0) {
+        onAssigned?.();
+      }
     } catch (err) {
-      setError("Failed to parse Excel file");
-      console.error(err);
+      console.error("Assign certificate error:", err);
+      setError("Failed to process file: " + (err.message || String(err)));
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 3: Enroll students
-  const handleAssign = async () => {
-    setStep("processing");
-    setLoading(true);
-    setError(null);
-
-    try {
-      const allResults = [];
-
-      for (const { cert, emails } of matchedCertificates) {
-        const result = await enrollStudentsIntoCertificate({
-          certificateId: cert.id,
-          certificateName: cert.name,
-          examCode: cert.examCode,
-          projectCode,
-          studentEmails: emails,
-        });
-        allResults.push({
-          certificateName: cert.name,
-          examCode: cert.examCode,
-          ...result,
-        });
-      }
-
-      setResults(allResults);
-      setStep("complete");
-      onAssigned?.();
-    } catch (err) {
-      setError("Failed to assign certificates");
-      console.error(err);
-      setStep("confirm");
-    } finally {
-      setLoading(false);
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setError("");
+      setStatus("");
+      setResults(null);
     }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setError("");
+    setStatus("");
+    setResults(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-[#0B2A4A]">
-            {step === "upload" && "Assign Certificate via Excel"}
-            {step === "confirm" && "Confirm Assignment"}
-            {step === "processing" && "Assigning..."}
-            {step === "complete" && "Assignment Complete"}
+      <div className="relative mx-4 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        {/* Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-[#0B2A4A]">
+            Enroll Certificate via Excel
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            disabled={loading}
           >
             ✕
           </button>
         </div>
 
+        {/* Instructions */}
+        <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+          <p className="font-semibold mb-1">Required columns:</p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            <li>
+              <strong>EMAIL</strong> — student email address
+            </li>
+            <li>
+              <strong>EXAM CODE</strong> — certificate exam code (e.g. AZ-900)
+            </li>
+          </ul>
+          <p className="mt-1.5 text-xs text-blue-600">
+            Tip: Multiple exam codes per row are supported — separate with
+            commas (e.g. "AZ-900, SC-900").
+          </p>
+        </div>
+
+        {/* Project code label */}
+        <div className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          Project Code: <strong>{projectCode}</strong>
+        </div>
+
+        {/* File input */}
+        <div className="mb-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileChange}
+            disabled={loading}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#0B2A4A] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-[#0f355b]"
+          />
+        </div>
+
+        {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm">
+          <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* Step 1: Upload */}
-        {step === "upload" && (
-          <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm text-blue-800">
-              <p className="font-medium mb-2">Excel Format:</p>
-              <ul className="space-y-1 text-xs">
-                <li>
-                  ✓ Required: <strong>EMAIL</strong> column (student email
-                  addresses)
-                </li>
-                <li>
-                  ✓ Required: <strong>EXAM CODE</strong> column (matches
-                  certificate exam codes)
-                </li>
-              </ul>
-            </div>
+        {/* Status */}
+        {status && !error && (
+          <div className="mb-3 rounded-lg bg-green-50 p-3 text-sm text-green-800 whitespace-pre-line">
+            {status}
+          </div>
+        )}
 
-            <p className="text-sm text-gray-600">
-              Project Code: <strong>{projectCode}</strong>
+        {/* Per-certificate breakdown */}
+        {results?.enrollResults && (
+          <div className="mb-3 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <p className="text-xs font-semibold text-gray-500 mb-1.5">
+              Per-certificate breakdown:
             </p>
-
-            <label className="block">
-              <span className="text-sm text-gray-600 mb-2 block">
-                Upload Excel file:
-              </span>
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={(e) =>
-                  e.target.files?.[0] && handleExcelUpload(e.target.files[0])
-                }
-                className="block w-full text-sm border border-gray-300 rounded-md p-2"
-                disabled={loading}
-              />
-            </label>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            {results.enrollResults.map((r, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between text-xs py-1 border-b border-gray-100 last:border-0"
               >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Confirm */}
-        {step === "confirm" && (
-          <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 p-3 rounded">
-              <p className="text-sm font-medium text-blue-800 mb-3">
-                Assignment Summary:
-              </p>
-              <ul className="text-sm text-blue-700 space-y-2">
-                <li>
-                  <strong>Project Code:</strong> {projectCode}
-                </li>
-                <li>
-                  <strong>Total rows parsed:</strong> {parsedRows.length}
-                </li>
-                <li>
-                  <strong>Certificates matched:</strong>{" "}
-                  {matchedCertificates.length}
-                </li>
-              </ul>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto space-y-2 border border-gray-200 rounded p-3 bg-gray-50">
-              {matchedCertificates.map(({ cert, emails }) => (
-                <div
-                  key={cert.id}
-                  className="flex items-center justify-between p-2 bg-white rounded border"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{cert.name}</p>
-                    <p className="text-xs text-gray-500">
-                      Exam Code: {cert.examCode}
-                    </p>
-                  </div>
-                  <span className="text-sm text-blue-600 font-medium">
-                    {emails.length} students
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => {
-                  setStep("upload");
-                  setParsedRows([]);
-                  setMatchedCertificates([]);
-                  setError(null);
-                }}
-                disabled={loading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleAssign}
-                disabled={loading || matchedCertificates.length === 0}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-              >
-                {loading ? "Processing..." : "Assign Certificates"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Processing */}
-        {step === "processing" && (
-          <div className="space-y-4 text-center py-6">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto" />
-            <p className="text-gray-600">
-              Assigning certificates to students...
-            </p>
-          </div>
-        )}
-
-        {/* Step 4: Complete */}
-        {step === "complete" && results && (
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 p-4 rounded">
-              <p className="text-lg font-semibold text-green-800 mb-3">
-                ✓ Certificates Assigned Successfully
-              </p>
-              <div className="space-y-2">
-                {results.map((r, idx) => (
-                  <div key={idx} className="text-sm text-green-700">
-                    <strong>{r.certificateName}</strong> ({r.examCode}):
-                    enrolled {r.enrolledCount}, already enrolled{" "}
-                    {r.alreadyEnrolledCount}, matched {r.matchedCount}
-                  </div>
-                ))}
+                <span className="font-medium text-[#0B2A4A] truncate mr-2">
+                  {r.certName}
+                </span>
+                <span className="text-gray-600 whitespace-nowrap">
+                  {r.error ? (
+                    <span className="text-red-600">Error: {r.error}</span>
+                  ) : (
+                    `${r.enrolledCount} enrolled, ${r.alreadyEnrolledCount} already, ${r.matchedCount} matched`
+                  )}
+                </span>
               </div>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Close
-            </button>
+            ))}
           </div>
         )}
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-3">
+          {(results || error) && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Reset
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            disabled={loading}
+          >
+            {results ? "Close" : "Cancel"}
+          </button>
+          {!results && (
+            <button
+              type="button"
+              onClick={handleExcelUpload}
+              disabled={loading || !file}
+              className="rounded-lg bg-[#0B2A4A] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0f355b] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Processing…" : "Assign"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
