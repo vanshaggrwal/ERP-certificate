@@ -9,6 +9,7 @@ import {
   getAllColleges,
   getCollegeByCode,
 } from "../../../services/collegeService";
+import { getCertificateEnrollmentStatsByProject } from "../../../services/certificateService";
 import {
   cacheAgeLabel,
   getCached,
@@ -53,6 +54,16 @@ const extractPassYearFromProjectCode = (code) => {
     .filter(Boolean);
   if (parts.length === 0) return "";
   return parts[parts.length - 1];
+};
+
+const deriveCourseFromProjectCode = (code) => {
+  const parts = String(code || "")
+    .split("/")
+    .map((p) => p.trim().toUpperCase())
+    .filter(Boolean);
+  if (parts.includes("MBA")) return "MBA";
+  if (parts.includes("ENGG") || parts.includes("ENGINEERING")) return "Engineering";
+  return "Other";
 };
 
 export default function AdminDashboard() {
@@ -104,12 +115,28 @@ export default function AdminDashboard() {
   };
 
   const getStudentProgress = (student) =>
-    hasPassedCertificate(student) ? 100 : parseProgress(student?.progress);
+    hasPassedCertificate(student)
+      ? 100
+      : (() => {
+          const results =
+            student?.certificateResults &&
+            typeof student.certificateResults === "object"
+              ? Object.values(student.certificateResults).filter((r) => !r?.isDeleted)
+              : [];
+
+          const anyFailed = results.some((r) =>
+            ["failed"].includes(String(r?.status || r?.result || "").toLowerCase()),
+          );
+
+          if (anyFailed) return 50;
+          return parseProgress(student?.progress);
+        })();
 
   const [students, setStudents] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectStudentCounts, setProjectStudentCounts] = useState({});
   const [certifications, setCertifications] = useState([]);
+  const [perProjectCertStats, setPerProjectCertStats] = useState([]);
   const [collegeInfo, setCollegeInfo] = useState({ name: "", logo: "" });
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const [isLayoutResizing, setIsLayoutResizing] = useState(false);
@@ -187,9 +214,15 @@ export default function AdminDashboard() {
         const projectRows = await getProjectCodesByCollege(collegeCode);
         const normalizedProjects = (projectRows || [])
           .filter((project) => String(project?.code || "").trim())
-          .sort((a, b) =>
-            String(a.code || "").localeCompare(String(b.code || "")),
-          );
+          .map((project) => {
+            const code = String(project.code || "").trim();
+            const derivedCourse = deriveCourseFromProjectCode(code);
+            return {
+              ...project,
+              course: project.course || project.courseCode || derivedCourse,
+            };
+          })
+          .sort((a, b) => String(a.code || "").localeCompare(String(b.code || "")));
 
         // Fetch counts and sampled student docs in parallel
         const sampledProjects = normalizedProjects.slice(
@@ -197,7 +230,7 @@ export default function AdminDashboard() {
           DASHBOARD_SAMPLE_PROJECT_LIMIT,
         );
 
-        const [countEntries, sampledGroups] = await Promise.all([
+        const [countEntries, sampledGroups, perProjectStats] = await Promise.all([
           // Server-side counts for ALL projects — lightweight
           Promise.all(
             normalizedProjects.map(async (project) => {
@@ -213,6 +246,17 @@ export default function AdminDashboard() {
                 maxDocs: DASHBOARD_SAMPLE_STUDENTS_PER_PROJECT,
               }),
             ),
+          ),
+          Promise.all(
+            normalizedProjects.map(async (project) => {
+              const code = String(project.code || "").trim();
+              try {
+                return await getCertificateEnrollmentStatsByProject(code);
+              } catch (err) {
+                console.warn("Cert stats failed for", code, err);
+                return new Map();
+              }
+            }),
           ),
         ]);
 
@@ -249,6 +293,7 @@ export default function AdminDashboard() {
         setProjects(normalizedProjects);
         setProjectStudentCounts(countsByProject);
         setCertifications(Array.from(certificateNames));
+        setPerProjectCertStats(perProjectStats);
         const newCollegeInfo = {
           name: String(
             college?.college_name || profile?.collegeName || collegeCode || "",
@@ -309,7 +354,7 @@ export default function AdminDashboard() {
         String(p.code || "").trim(),
         {
           year: String(p.year || p.academicYear || "").trim(),
-          course: String(p.course || p.courseCode || "").trim(),
+          course: String(p.course || p.courseCode || deriveCourseFromProjectCode(p.code)).trim(),
           passYear: extractPassYearFromProjectCode(p.code),
         },
       ]),
@@ -354,20 +399,82 @@ export default function AdminDashboard() {
             const yearOk = selectedYear === "All" || meta.year === selectedYear;
             const courseOk = selectedCourse === "All" || meta.course === selectedCourse;
             const passOk = selectedPassYear === "All" || meta.passYear === selectedPassYear;
+
+            // If course is missing on student, derive from project code for matching
+            if (!courseOk) {
+              const derivedCourse = deriveCourseFromProjectCode(projectCode);
+              if (selectedCourse !== "All" && derivedCourse === selectedCourse) {
+                return yearOk && passOk;
+              }
+            }
+
             return yearOk && courseOk && passOk;
           });
 
-    return { filteredProjects, filteredProjectCounts, filteredStudents };
-  }, [projects, projectStudentCounts, students, selectedYear, selectedCourse, selectedPassYear]);
+    const filteredCertStats = perProjectCertStats
+      .filter((stats, index) => {
+        const code = String(projects[index]?.code || "").trim();
+        const meta = projectMetaByCode.get(code) || {
+          year: "",
+          course: "",
+          passYear: "",
+        };
+        const yearOk = selectedYear === "All" || meta.year === selectedYear;
+        const courseOk = selectedCourse === "All" || meta.course === selectedCourse;
+        const passOk = selectedPassYear === "All" || meta.passYear === selectedPassYear;
+        return yearOk && courseOk && passOk;
+      })
+      .filter(Boolean);
+
+    const certIds = new Set();
+    filteredStudents.forEach((student) => {
+      const results =
+        student?.certificateResults && typeof student.certificateResults === "object"
+          ? Object.values(student.certificateResults).filter((r) => !r?.isDeleted)
+          : [];
+
+      results.forEach((result, idx) => {
+        const id = String(result.certificateId || result.id || `${student.id || ""}-cert-${idx}`).trim();
+        if (id) certIds.add(id);
+      });
+
+      if (results.length === 0 && student?.certificate) {
+        const legacyId = `legacy-${student.id || student.docId || student.email || Math.random()}`;
+        certIds.add(legacyId);
+      }
+    });
+
+    filteredCertStats.forEach((statsMap) => {
+      statsMap.forEach((_, certId) => {
+        const id = String(certId || "").trim();
+        if (id) certIds.add(id);
+      });
+    });
+
+    return {
+      filteredProjects,
+      filteredProjectCounts,
+      filteredStudents,
+      filteredCertStats,
+      certCount: certIds.size,
+    };
+  }, [projects, projectStudentCounts, students, selectedYear, selectedCourse, selectedPassYear, perProjectCertStats]);
 
   const data = useMemo(() => {
-    const { filteredProjects, filteredProjectCounts, filteredStudents } = filteredData;
+    const { filteredProjects, filteredProjectCounts, filteredStudents, certCount } = filteredData;
 
-    const byCourse = {};
+    const byCourse = { Engineering: 0, MBA: 0 };
     filteredProjects.forEach((p) => {
-      const courseKey = p.course || p.courseCode || "Unknown";
-      byCourse[courseKey] =
-        (byCourse[courseKey] || 0) +
+      const courseKey = deriveCourseFromProjectCode(p.code) || p.course || p.courseCode || "Other";
+      const normalizedCourse =
+        courseKey.toLowerCase().includes("mba")
+          ? "MBA"
+          : courseKey.toLowerCase().includes("eng")
+            ? "Engineering"
+            : null;
+      if (!normalizedCourse) return;
+      byCourse[normalizedCourse] =
+        (byCourse[normalizedCourse] || 0) +
         Number(filteredProjectCounts[String(p.code || "").trim()] || 0);
     });
 
@@ -422,19 +529,19 @@ export default function AdminDashboard() {
     return {
       totalEnrollments,
       completionRate: `${avgProgress}%`,
-      certificatesIssued: certifications.length,
+      certificatesIssued: certCount,
       activeProjectCodes: filteredProjects.length,
       barData,
       pieData,
       progressBands,
       topProjects,
     };
-  }, [filteredData, certifications]);
+  }, [filteredData]);
 
   const certificationData = useMemo(() => {
     const statsByCertificate = {};
 
-    const { filteredStudents } = filteredData;
+    const { filteredStudents, filteredCertStats } = filteredData;
 
     filteredStudents.forEach((student) => {
       const results =
@@ -495,6 +602,23 @@ export default function AdminDashboard() {
           statsByCertificate[legacyCertName].Enrolled += 1;
         }
       }
+    });
+
+    // Merge in aggregated enrollment stats (per filtered project) to ensure bar chart shows data
+    filteredCertStats.forEach((statsMap) => {
+      statsMap.forEach((stat, certId) => {
+        if (!statsByCertificate[certId]) {
+          statsByCertificate[certId] = {
+            label: stat.name || certId,
+            Enrolled: 0,
+            Passed: 0,
+            Failed: 0,
+          };
+        }
+        statsByCertificate[certId].Enrolled += stat.enrolledCount || 0;
+        statsByCertificate[certId].Passed += stat.passedCount || 0;
+        statsByCertificate[certId].Failed += stat.failedCount || 0;
+      });
     });
 
     return Object.values(statsByCertificate).sort((a, b) =>

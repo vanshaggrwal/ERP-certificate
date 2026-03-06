@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentForAuthUser } from "../../../services/studentService";
 import { getCertificatesByIds } from "../../../services/certificateService";
+import { getStudentEnrollmentsByProject } from "../../../services/certificateService";
 import { getAllOrganizations } from "../../../services/organizationService";
 
 const getCurrentYearFromProjectCode = (projectCodeValue) => {
@@ -141,9 +142,32 @@ export default function StudentDashboard() {
         return;
       }
 
-      const projectYearTag = getCurrentYearFromProjectCode(
-        currentStudent.projectCode || currentStudent.projectId,
-      );
+      const projectCode = currentStudent.projectCode || currentStudent.projectId || "";
+      const projectYearTag = getCurrentYearFromProjectCode(projectCode);
+
+      // Try new enrollment collection first
+      try {
+        const enrollmentsMap = await getStudentEnrollmentsByProject(projectCode);
+        const enrollmentEntries = Array.from(enrollmentsMap.values()).filter(
+          (row) => String(row.studentId || "").trim() === String(currentStudent.id || currentStudent.docId || "").trim(),
+        );
+        if (enrollmentEntries.length > 0) {
+          const mapped = enrollmentEntries.map((entry, idx) => ({
+            id: entry.certificateId || `enroll-${idx}`,
+            name: entry.certificateName || "Certificate",
+            platform: entry.platform || "Certification",
+            organizationName: entry.organizationName || entry.domain || "",
+            organizationLogoUrl: entry.organizationLogoUrl || "",
+            level: entry.level || "",
+            status: normalizeCertificateStatus(entry.status || "enrolled"),
+            yearTag: entry.yearTag || projectYearTag,
+          }));
+          setEnrolledCertificates(mapped);
+          return;
+        }
+      } catch (err) {
+        console.warn("Enrollment lookup failed, fallback to legacy results", err);
+      }
 
       const resultMap =
         currentStudent.certificateResults &&
