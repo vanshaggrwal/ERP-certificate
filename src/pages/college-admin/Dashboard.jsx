@@ -303,8 +303,7 @@ export default function AdminDashboard() {
     );
     return ["All", ...Array.from(years).sort()];
   }, [projects]);
-
-  const data = useMemo(() => {
+  const filteredData = useMemo(() => {
     const projectMetaByCode = new Map(
       projects.map((p) => [
         String(p.code || "").trim(),
@@ -357,6 +356,12 @@ export default function AdminDashboard() {
             const passOk = selectedPassYear === "All" || meta.passYear === selectedPassYear;
             return yearOk && courseOk && passOk;
           });
+
+    return { filteredProjects, filteredProjectCounts, filteredStudents };
+  }, [projects, projectStudentCounts, students, selectedYear, selectedCourse, selectedPassYear]);
+
+  const data = useMemo(() => {
+    const { filteredProjects, filteredProjectCounts, filteredStudents } = filteredData;
 
     const byCourse = {};
     filteredProjects.forEach((p) => {
@@ -424,12 +429,14 @@ export default function AdminDashboard() {
       progressBands,
       topProjects,
     };
-  }, [students, projects, certifications, projectStudentCounts, selectedYear, selectedCourse, selectedPassYear]);
+  }, [filteredData, certifications]);
 
   const certificationData = useMemo(() => {
     const statsByCertificate = {};
 
-    students.forEach((student) => {
+    const { filteredStudents } = filteredData;
+
+    filteredStudents.forEach((student) => {
       const results =
         student.certificateResults &&
         typeof student.certificateResults === "object"
@@ -493,7 +500,7 @@ export default function AdminDashboard() {
     return Object.values(statsByCertificate).sort((a, b) =>
       String(a.label).localeCompare(String(b.label)),
     );
-  }, [students]);
+  }, [filteredData]);
 
   const splitCertificateLabel = (value) => {
     const text = String(value || "").trim();
