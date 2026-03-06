@@ -749,6 +749,97 @@ export const getStudentEnrollmentsByProject = async (projectCode) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Get all certificate enrollments for a student by email (across projects)
+// Returns array of { certificateId, certificateName, examCode, status, projectCode }
+// ---------------------------------------------------------------------------
+
+export const getEnrollmentsByStudentEmail = async (email) => {
+  if (isLocalDbMode()) return [];
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return [];
+  try {
+    const queries = [
+      query(
+        collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
+        where("email", "==", normalized),
+      ),
+    ];
+
+    const rawEmail = String(email || "").trim();
+    if (rawEmail && rawEmail !== normalized) {
+      queries.push(
+        query(
+          collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
+          where("email", "==", rawEmail),
+        ),
+      );
+    }
+
+    const snapshots = await Promise.all(queries.map((q) => getDocs(q)));
+    const rows = [];
+    snapshots.forEach((snapshot) => {
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data() || {};
+        if (d.isDeleted === true) return;
+        rows.push({
+          certificateId: d.certificateId || "",
+          certificateName: d.certificateName || "",
+          examCode: d.examCode || "",
+          status: d.status || "enrolled",
+          projectCode: d.projectCode || "",
+          platform: d.platform || d.domain || "",
+          organizationName: d.organizationName || d.domain || "",
+          organizationLogoUrl: d.organizationLogoUrl || "",
+          level: d.level || "",
+          email: d.email || normalized,
+          studentId: d.studentId || "",
+        });
+      });
+    });
+    return rows;
+  } catch (error) {
+    console.error("Error getting enrollments by student email:", error);
+    return [];
+  }
+};
+
+// Get enrollments across projects by studentId (collectionGroup)
+export const getEnrollmentsByStudentId = async (studentId) => {
+  if (isLocalDbMode()) return [];
+  const normalized = String(studentId || "").trim();
+  if (!normalized) return [];
+  try {
+    const q = query(
+      collectionGroup(db, CERTIFICATE_ENROLLMENTS_SUBCOLLECTION),
+      where("studentId", "==", normalized),
+    );
+    const snapshot = await getDocs(q);
+    const rows = [];
+    snapshot.forEach((docSnap) => {
+      const d = docSnap.data() || {};
+      if (d.isDeleted === true) return;
+      rows.push({
+        certificateId: d.certificateId || "",
+        certificateName: d.certificateName || "",
+        examCode: d.examCode || "",
+        status: d.status || "enrolled",
+        projectCode: d.projectCode || "",
+        platform: d.platform || d.domain || "",
+        organizationName: d.organizationName || d.domain || "",
+        organizationLogoUrl: d.organizationLogoUrl || "",
+        level: d.level || "",
+        email: d.email || "",
+        studentId: d.studentId || normalized,
+      });
+    });
+    return rows;
+  } catch (error) {
+    console.error("Error getting enrollments by student id:", error);
+    return [];
+  }
+};
+
 /**
  * Returns per-certificate enrollment stats (enrolled / passed / failed counts)
  * for a given project code, sourced from the lightweight

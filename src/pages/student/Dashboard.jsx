@@ -9,8 +9,12 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentForAuthUser } from "../../../services/studentService";
-import { getCertificatesByIds } from "../../../services/certificateService";
-import { getStudentEnrollmentsByProject } from "../../../services/certificateService";
+import {
+  getCertificatesByIds,
+  getStudentEnrollmentsByProject,
+  getEnrollmentsByStudentEmail,
+  getEnrollmentsByStudentId,
+} from "../../../services/certificateService";
 import { getAllOrganizations } from "../../../services/organizationService";
 
 const getCurrentYearFromProjectCode = (projectCodeValue) => {
@@ -145,7 +149,36 @@ export default function StudentDashboard() {
       const projectCode = currentStudent.projectCode || currentStudent.projectId || "";
       const projectYearTag = getCurrentYearFromProjectCode(projectCode);
 
-      // Try new enrollment collection first
+      // Try collectionGroup enrollment lookup by student email/id first (captures multiple projects/years)
+      try {
+        const email = String(currentStudent.email || currentStudent.OFFICIAL_DETAILS?.EMAIL_ID || "").trim();
+        const studentId = String(currentStudent.id || currentStudent.docId || currentStudent.rollNo || "").trim();
+
+        const [byEmail, byId] = await Promise.all([
+          email ? getEnrollmentsByStudentEmail(email) : [],
+          studentId ? getEnrollmentsByStudentId(studentId) : [],
+        ]);
+
+        const merged = [...byEmail, ...byId];
+        if (merged.length > 0) {
+          const mapped = merged.map((entry, idx) => ({
+            id: entry.certificateId || `enroll-${idx}`,
+            name: entry.certificateName || "Certificate",
+            platform: entry.platform || "Certification",
+            organizationName: entry.organizationName || entry.domain || "",
+            organizationLogoUrl: entry.organizationLogoUrl || "",
+            level: entry.level || "",
+            status: normalizeCertificateStatus(entry.status || "enrolled"),
+            yearTag: entry.yearTag || getCurrentYearFromProjectCode(entry.projectCode) || projectYearTag,
+          }));
+          setEnrolledCertificates(mapped);
+          return;
+        }
+      } catch (err) {
+        console.warn("Email/id enrollment lookup failed, fallback to project lookup", err);
+      }
+
+      // Fallback: per-project enrollments for this student's project
       try {
         const enrollmentsMap = await getStudentEnrollmentsByProject(projectCode);
         const enrollmentEntries = Array.from(enrollmentsMap.values()).filter(
