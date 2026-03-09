@@ -19,6 +19,7 @@ const normalizeStream = (rawCourse, projectCode) => {
   const normalized = rawValue.toLowerCase();
 
   if (normalized.includes("mba")) return "MBA";
+  if (normalized.includes("bba")) return "BBA";
   if (
     normalized.includes("engineering") ||
     normalized.includes("engineer") ||
@@ -113,6 +114,7 @@ export default function Certificates() {
               streamBreakdown: {
                 Engineering: { ...EMPTY_BREAKDOWN },
                 MBA: { ...EMPTY_BREAKDOWN },
+                BBA: { ...EMPTY_BREAKDOWN },
                 Other: { ...EMPTY_BREAKDOWN },
               },
             };
@@ -173,6 +175,12 @@ export default function Certificates() {
           orgLookupKey && orgLookupKey !== "-"
             ? organizationByName.get(orgLookupKey)
             : null;
+        
+        const engineeringBreakdown = stat.streamBreakdown?.Engineering || { ...EMPTY_BREAKDOWN };
+        const mbaBreakdown = stat.streamBreakdown?.MBA || { ...EMPTY_BREAKDOWN };
+        const bbaBreakdown = stat.streamBreakdown?.BBA || { ...EMPTY_BREAKDOWN };
+        const otherBreakdown = stat.streamBreakdown?.Other || { ...EMPTY_BREAKDOWN };
+        
         return {
           id: stat.id,
           name: String(meta?.name || stat.name || "").trim() || stat.id,
@@ -185,9 +193,10 @@ export default function Certificates() {
           enrolledCount: stat.enrolledCount,
           passedCount: stat.passedCount,
           failedCount: stat.failedCount,
-          engineering:
-            stat.streamBreakdown?.Engineering || { ...EMPTY_BREAKDOWN },
-          mba: stat.streamBreakdown?.MBA || { ...EMPTY_BREAKDOWN },
+          engineering: engineeringBreakdown,
+          mba: mbaBreakdown,
+          bba: bbaBreakdown,
+          other: otherBreakdown,
         };
       })
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
@@ -222,7 +231,11 @@ export default function Certificates() {
           ? true
           : filters.stream === "engineering"
             ? row.engineering.enrolledCount > 0
-            : row.mba.enrolledCount > 0;
+            : filters.stream === "mba"
+              ? row.mba.enrolledCount > 0
+              : filters.stream === "bba"
+                ? row.bba.enrolledCount > 0
+                : row.other.enrolledCount > 0;
       const hasDeclaredResult = row.passedCount > 0 || row.failedCount > 0;
       const matchesResult =
         filters.result === "all"
@@ -276,6 +289,24 @@ export default function Certificates() {
     },
     { ...EMPTY_BREAKDOWN },
   );
+  const bbaTotals = filteredCertificateRows.reduce(
+    (acc, row) => {
+      acc.enrolledCount += row.bba.enrolledCount;
+      acc.passedCount += row.bba.passedCount;
+      acc.failedCount += row.bba.failedCount;
+      return acc;
+    },
+    { ...EMPTY_BREAKDOWN },
+  );
+  const otherTotals = filteredCertificateRows.reduce(
+    (acc, row) => {
+      acc.enrolledCount += row.other.enrolledCount;
+      acc.passedCount += row.other.passedCount;
+      acc.failedCount += row.other.failedCount;
+      return acc;
+    },
+    { ...EMPTY_BREAKDOWN },
+  );
 
   return (
     <div className="space-y-6">
@@ -293,9 +324,11 @@ export default function Certificates() {
           totalFailed={totalFailed}
         />
       </section>
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StreamSummaryCard title="Engineering" breakdown={engineeringTotals} />
         <StreamSummaryCard title="MBA" breakdown={mbaTotals} />
+        <StreamSummaryCard title="BBA" breakdown={bbaTotals} />
+        <StreamSummaryCard title="Other" breakdown={otherTotals} />
       </section>
 
       <section className="rounded-xl bg-white p-6 shadow">
@@ -311,6 +344,8 @@ export default function Certificates() {
                 <th className="py-2 pr-3">Level</th>
                 <th className="py-2 pr-3">Engineering (E/P/F)</th>
                 <th className="py-2 pr-3">MBA (E/P/F)</th>
+                <th className="py-2 pr-3">BBA (E/P/F)</th>
+                <th className="py-2 pr-3">Other (E/P/F)</th>
                 <th className="py-2 pr-3">Enrolled Students</th>
                 <th className="py-2">Result Status</th>
               </tr>
@@ -401,6 +436,8 @@ export default function Certificates() {
                     <option value="all">All streams</option>
                     <option value="engineering">Engineering</option>
                     <option value="mba">MBA</option>
+                    <option value="bba">BBA</option>
+                    <option value="other">Other</option>
                   </select>
                 </th>
                 <th className="py-2 pr-3" />
@@ -448,6 +485,12 @@ export default function Certificates() {
                     </td>
                     <td className="py-2 pr-3">
                       <CompactBreakdown breakdown={row.mba} />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <CompactBreakdown breakdown={row.bba} />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <CompactBreakdown breakdown={row.other} />
                     </td>
                     <td className="py-2 pr-3">{row.enrolledCount}</td>
                     <td className="py-2">

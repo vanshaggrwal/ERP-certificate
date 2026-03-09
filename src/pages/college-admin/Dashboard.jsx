@@ -689,6 +689,27 @@ export default function AdminDashboard() {
     );
   }, [filteredData]);
 
+  // Calculate max total for consistent Y-axis scaling in certification chart
+  // This ensures bars with the same total number of students have equal heights
+  const maxCertTotal = useMemo(() => {
+    if (!certificationData || certificationData.length === 0) return 10;
+    
+    let maxTotal = 0;
+    certificationData.forEach((cert) => {
+      const enrolled = parseInt(cert.Enrolled) || 0;
+      const passed = parseInt(cert.Passed) || 0;
+      const failed = parseInt(cert.Failed) || 0;
+      const total = enrolled + passed + failed;
+      
+      if (total > maxTotal) {
+        maxTotal = total;
+      }
+    });
+    
+    // Ensure we have a reasonable max, with 15% padding for visual space
+    return Math.max(Math.ceil(maxTotal * 1.15), 10);
+  }, [certificationData]);
+
   const splitCertificateLabel = (value) => {
     const text = String(value || "").trim();
     if (!text) return [""];
@@ -911,7 +932,14 @@ export default function AdminDashboard() {
                 tickMargin={8}
                 tick={renderCertificateTick}
               />
-              <YAxis tick={{ fontSize: 13, fill: "#6B7280" }} allowDecimals={false} />
+              <YAxis
+                type="number"
+                domain={[0, maxCertTotal]}
+                range={[340 - 60, 20]}
+                tick={{ fontSize: 13, fill: "#6B7280" }}
+                allowDecimals={false}
+                width={40}
+              />
               <Tooltip
                 cursor={{ fill: "#F3F4F6" }}
                 contentStyle={{
