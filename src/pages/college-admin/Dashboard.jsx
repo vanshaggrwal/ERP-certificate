@@ -62,18 +62,27 @@ const deriveCourseFromProjectCode = (code) => {
     .map((p) => p.trim().toUpperCase())
     .filter(Boolean);
   if (parts.includes("MBA")) return "MBA";
+  if (parts.includes("BBA")) return "BBA";
   if (parts.includes("ENGG") || parts.includes("ENGINEERING")) return "Engineering";
   return "Other";
 };
 
 export default function AdminDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444"];
   const collegeCode = String(
     profile?.collegeCode || profile?.college_code || "",
   )
     .trim()
     .toUpperCase();
+  const adminName =
+    profile?.name ||
+    profile?.fullName ||
+    profile?.adminName ||
+    user?.displayName ||
+    profile?.email?.split("@")[0] ||
+    user?.email?.split("@")[0] ||
+    "Admin";
   const [selectedYear, setSelectedYear] = useState("All");
   const [selectedCourse, setSelectedCourse] = useState("All");
   const [selectedPassYear, setSelectedPassYear] = useState("All");
@@ -473,29 +482,33 @@ export default function AdminDashboard() {
   const data = useMemo(() => {
     const { filteredProjects, filteredProjectCounts, filteredStudents, certCount } = filteredData;
 
-    const byCourse = { Engineering: 0, MBA: 0 };
+    const byCourse = new Map();
+    const normalizeCourse = (courseKey) => {
+      const lower = String(courseKey || "").toLowerCase();
+      if (lower.includes("mba")) return "MBA";
+      if (lower.includes("bba")) return "BBA";
+      if (lower.includes("eng")) return "Engineering";
+      return "Other";
+    };
+
     filteredProjects.forEach((p) => {
       const courseKey = deriveCourseFromProjectCode(p.code) || p.course || p.courseCode || "Other";
-      const normalizedCourse =
-        courseKey.toLowerCase().includes("mba")
-          ? "MBA"
-          : courseKey.toLowerCase().includes("eng")
-            ? "Engineering"
-            : null;
-      if (!normalizedCourse) return;
-      byCourse[normalizedCourse] =
-        (byCourse[normalizedCourse] || 0) +
-        Number(filteredProjectCounts[String(p.code || "").trim()] || 0);
+      const courseLabel = normalizeCourse(courseKey);
+      const current = byCourse.get(courseLabel) || 0;
+      byCourse.set(
+        courseLabel,
+        current + Number(filteredProjectCounts[String(p.code || "").trim()] || 0),
+      );
     });
 
-    const barData = Object.keys(byCourse).map((k) => ({
-      course: k,
-      count: byCourse[k],
+    const barData = Array.from(byCourse.entries()).map(([course, count]) => ({
+      course,
+      count,
     }));
 
-    const pieData = Object.keys(byCourse).map((k) => ({
-      name: k,
-      value: byCourse[k],
+    const pieData = Array.from(byCourse.entries()).map(([name, value]) => ({
+      name,
+      value,
     }));
 
     // Compute progress using the richest available source: certificate stats first,
@@ -743,17 +756,19 @@ export default function AdminDashboard() {
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Dashboard
+              Dashboard{" "}
+              
             </h1>
-            <p className="mt-2 text-base text-gray-600">
-              Monitor enrollments, performance, and certification metrics
+           
+            <p className="mt-1 text-sm font-medium text-gray-700 leading-5">
+              Welcome Dr. Padma Adane,<br />
+              Dean<br />
+              School of Computer Science and Engineering<br />
+              Ramdeo Baba College of Engineering
             </p>
-            {cacheInfo.cachedAt > 0 && (
-              <p className="mt-3 text-xs font-medium text-gray-500">
-                {cacheInfo.isStale ? "⚠️ " : "✓ "}
-                {cacheAgeLabel(cacheInfo.cachedAt)}
-              </p>
-            )}
+            
+           
+            
           </div>
           <div className="hidden md:flex md:items-center md:justify-center">
             {collegeInfo.logo && !logoLoadFailed ? (

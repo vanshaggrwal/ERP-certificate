@@ -112,47 +112,8 @@ export const addProjectCode = async (projectData) => {
     const normalizedCode = String(projectData.code || "").trim();
     const normalizedCollegeId = String(projectData.collegeId || "").trim();
 
-    const existingCodeQuery = query(
-      collection(db, PROJECT_CODES_COLLECTION),
-      where("collegeId", "==", normalizedCollegeId),
-      where("code", "==", normalizedCode),
-    );
-    const existingCodeSnapshot = await getDocs(existingCodeQuery);
-
-    if (!existingCodeSnapshot.empty) {
-      const exactMatchDoc =
-        existingCodeSnapshot.docs.find((existingDoc) => {
-          const existingData = existingDoc.data() || {};
-          return (
-            normalizeValue(existingData.course) ===
-              normalizeValue(projectData.course) &&
-            normalizeValue(existingData.year) ===
-              normalizeValue(projectData.year) &&
-            normalizeValue(existingData.type) ===
-              normalizeValue(projectData.type) &&
-            normalizeValue(existingData.academicYear) ===
-              normalizeValue(projectData.academicYear)
-          );
-        }) || existingCodeSnapshot.docs[0];
-
-      await updateDoc(doc(db, PROJECT_CODES_COLLECTION, exactMatchDoc.id), {
-        code: normalizedCode,
-        collegeId: normalizedCollegeId,
-        college: projectData.college,
-        course: projectData.course,
-        year: projectData.year,
-        type: projectData.type,
-        academicYear: projectData.academicYear,
-        matched: projectData.matched || false,
-        isActive: true,
-        deletedAt: null,
-        updatedAt: new Date(),
-      });
-
-      await setStudentsProjectActiveStatus(normalizedCode, true);
-      return exactMatchDoc.id;
-    }
-
+    // Always create a fresh document to avoid mutating existing project codes inadvertently.
+    // This prevents the “replace instead of add” behaviour reported in the UI.
     const docRef = await addDoc(collection(db, PROJECT_CODES_COLLECTION), {
       code: normalizedCode,
       collegeId: normalizedCollegeId,
