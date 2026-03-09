@@ -61,15 +61,17 @@ const deriveCourseFromProjectCode = (code) => {
     .split("/")
     .map((p) => p.trim().toUpperCase())
     .filter(Boolean);
-  if (parts.includes("MBA")) return "MBA";
-  if (parts.includes("BBA")) return "BBA";
-  if (parts.includes("ENGG") || parts.includes("ENGINEERING")) return "Engineering";
+  if (parts.some((p) => p.includes("MBA"))) return "MBA";
+  if (parts.some((p) => p.includes("BBA"))) return "BBA";
+  if (parts.some((p) => p.includes("MCA"))) return "MCA";
+  if (parts.some((p) => p.includes("BCA"))) return "BCA";
+  if (parts.some((p) => p.includes("ENGG") || p.includes("ENGINEER"))) return "Engineering";
   return "Other";
 };
 
 export default function AdminDashboard() {
   const { profile, user } = useAuth();
-  const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444"];
+  const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
   const collegeCode = String(
     profile?.collegeCode || profile?.college_code || "",
   )
@@ -236,9 +238,15 @@ export default function AdminDashboard() {
           .map((project) => {
             const code = String(project.code || "").trim();
             const derivedCourse = deriveCourseFromProjectCode(code);
+            // Prioritize derived course if it's a known stream (MBA, BBA, Engineering)
+            // This ensures filters match the project code structure rather than potentially incorrect DB fields
+            const course =
+              derivedCourse !== "Other"
+                ? derivedCourse
+                : project.course || project.courseCode || "Other";
             return {
               ...project,
-              course: project.course || project.courseCode || derivedCourse,
+              course,
             };
           })
           .sort((a, b) => String(a.code || "").localeCompare(String(b.code || "")));
@@ -487,6 +495,8 @@ export default function AdminDashboard() {
       const lower = String(courseKey || "").toLowerCase();
       if (lower.includes("mba")) return "MBA";
       if (lower.includes("bba")) return "BBA";
+      if (lower.includes("mca")) return "MCA";
+      if (lower.includes("bca")) return "BCA";
       if (lower.includes("eng")) return "Engineering";
       return "Other";
     };
