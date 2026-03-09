@@ -316,8 +316,9 @@ export const createCollegeAdmin = async (adminData, collegeCode) => {
       createdAt: new Date(),
     });
 
-    // 3. Send password reset email so admin can set their own password
-    await sendPasswordResetEmail(secondaryAuth, normalizedEmail);
+    // (previously we sent a reset email, but this flow now uses the
+    // password provided during creation so no outgoing email is needed)
+    // await sendPasswordResetEmail(secondaryAuth, normalizedEmail);
 
     console.log("College admin created:", uid);
     return uid;
@@ -369,8 +370,9 @@ export const createSuperAdmin = async (adminData) => {
       createdAt: new Date(),
     });
 
-    // 3. Send password reset email so admin can set their own password
-    await sendPasswordResetEmail(secondaryAuth, normalizedEmail);
+    // (previously we sent a reset email, but this flow now uses the
+    // password provided during creation so no outgoing email is needed)
+    // await sendPasswordResetEmail(secondaryAuth, normalizedEmail);
 
     console.log("Super admin created:", uid);
     return uid;
