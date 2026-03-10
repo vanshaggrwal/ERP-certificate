@@ -5,6 +5,9 @@ import {
   updateAdmin,
 } from "../../../services/userService";
 import { getAllColleges } from "../../../services/collegeService";
+import { app } from "../../firebase/config";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence } from "firebase/auth";
 
 export default function AddAdminModal({
   admin,
@@ -132,18 +135,38 @@ export default function AddAdminModal({
         await updateAdmin(admin.uid, updateData);
       } else {
         // Create new admin
+        // Create auth user using secondary app to avoid logging out current user
+        const secondaryAppName = `Secondary-${Date.now()}`;
+        const secondaryApp = initializeApp(app.options, secondaryAppName);
+        const secondaryAuth = getAuth(secondaryApp);
+        let uid;
+
+        try {
+          await setPersistence(secondaryAuth, inMemoryPersistence);
+          const userCredential = await createUserWithEmailAndPassword(
+            secondaryAuth,
+            form.email,
+            form.password,
+          );
+          uid = userCredential.user.uid;
+        } catch (authError) {
+          await deleteApp(secondaryApp);
+          throw authError;
+        }
+        await deleteApp(secondaryApp);
+
         if (form.role === "superAdmin") {
           await createSuperAdmin({
+            uid,
             name: form.name,
             email: form.email,
-            password: form.password,
           });
         } else {
           await createCollegeAdmin(
             {
+              uid,
               name: form.name,
               email: form.email,
-              password: form.password,
             },
             form.college,
           );

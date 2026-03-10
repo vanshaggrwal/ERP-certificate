@@ -909,7 +909,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
         <Panel title="Enrollment by Course">
-          <ResponsiveContainer width="100%" height={300} debounce={75}>
+          <ResponsiveContainer width="100%" height={340} debounce={75}>
             <BarChart data={data.barData} barSize={48}>
               <CartesianGrid
                 strokeDasharray="4 4"
@@ -938,7 +938,6 @@ export default function AdminDashboard() {
             </BarChart>
           </ResponsiveContainer>
         </Panel>
-
         <Panel title="Certification Results">
           <ResponsiveContainer width="100%" height={340} debounce={75}>
             <BarChart
@@ -1034,7 +1033,6 @@ export default function AdminDashboard() {
             </PieChart>
           </ResponsiveContainer>
         </Panel>
-
         <Panel title="Course Distribution">
           <ResponsiveContainer width="100%" height={320} debounce={75}>
             <PieChart>
@@ -1065,7 +1063,6 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </Panel>
       </div>
-
       <Panel title="Project Codes Overview">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -1100,9 +1097,7 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
 /* Helper Components */
-
 function StatCard({ title, value, icon, color = "blue" }) {
   const colorClasses = {
     blue: "from-blue-50 to-blue-100 text-blue-600 bg-blue-100",
@@ -1110,9 +1105,7 @@ function StatCard({ title, value, icon, color = "blue" }) {
     amber: "from-amber-50 to-amber-100 text-amber-600 bg-amber-100",
     rose: "from-rose-50 to-rose-100 text-rose-600 bg-rose-100",
   };
-
   const iconBg = colorClasses[color] || colorClasses.blue;
-
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
       <div className="flex items-center justify-between">
@@ -1123,7 +1116,6 @@ function StatCard({ title, value, icon, color = "blue" }) {
     </div>
   );
 }
-
 function Panel({ title, children }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
