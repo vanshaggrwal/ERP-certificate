@@ -481,7 +481,8 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-7">
-      <section className="flex flex-wrap items-center justify-end gap-3 px-1">
+      <section className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <span className="text-lg font-medium text-[#0B2A4A]">Welcome, {fullName}. </span>
         <select
           className="rounded-lg border border-[#D7E2F1] px-3 py-1.5 text-sm text-[#0B2A4A]"
           value={selectedYear}

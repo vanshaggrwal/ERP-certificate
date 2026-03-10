@@ -236,6 +236,7 @@ export default function StudentNavbar({ onMenuClick }) {
                 {isDashboardView ? "Dashboard" : heading}
               </h1>
               <p className="mt-1 text-xs leading-snug text-gray-600 sm:text-sm">
+               
                 {subtitle}
               </p>
               {!isDashboardView && (
