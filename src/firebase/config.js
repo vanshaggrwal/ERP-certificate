@@ -13,7 +13,7 @@ export const firebaseConfig = {
   measurementId: "G-XFCFF52LHZ",
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
 export const auth = getAuth(app);

@@ -908,36 +908,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
-        <Panel title="Enrollment by Course">
-          <ResponsiveContainer width="100%" height={340} debounce={75}>
-            <BarChart data={data.barData} barSize={48}>
-              <CartesianGrid
-                strokeDasharray="4 4"
-                vertical={false}
-                stroke="#E5E7EB"
-              />
-              <XAxis dataKey="course" tick={{ fontSize: 13, fill: "#6B7280" }} />
-              <YAxis tick={{ fontSize: 13, fill: "#6B7280" }} allowDecimals={false} />
-              <Tooltip
-                cursor={{ fill: "#F3F4F6" }}
-                contentStyle={{
-                  backgroundColor: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "8px",
-                }}
-              />
-              <Bar
-                dataKey="count"
-                fill="#3B82F6"
-                radius={[12, 12, 0, 0]}
-                rootTabIndex={-1}
-                isAnimationActive={!isLayoutResizing}
-                animationDuration={400}
-                animationEasing="ease-out"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </Panel>
+        
         <Panel title="Certification Results">
           <ResponsiveContainer width="100%" height={340} debounce={75}>
             <BarChart
@@ -1001,38 +972,40 @@ export default function AdminDashboard() {
             </BarChart>
           </ResponsiveContainer>
         </Panel>
-      </div>
-
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
-        <Panel title="Student Progress Distribution">
-          <ResponsiveContainer width="100%" height={320} debounce={75}>
-            <PieChart>
-              <Pie
-                data={data.progressBands}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={70}
-                outerRadius={110}
-                rootTabIndex={-1}
-                isAnimationActive={!isLayoutResizing}
-                animationDuration={400}
-                animationEasing="ease-out"
-              >
-                {data.progressBands.map((entry, index) => (
-                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
+        <Panel title="Enrollment by Course">
+          <ResponsiveContainer width="100%" height={340} debounce={75}>
+            <BarChart data={data.barData} barSize={48}>
+              <CartesianGrid
+                strokeDasharray="4 4"
+                vertical={false}
+                stroke="#E5E7EB"
+              />
+              <XAxis dataKey="course" tick={{ fontSize: 13, fill: "#6B7280" }} />
+              <YAxis tick={{ fontSize: 13, fill: "#6B7280" }} allowDecimals={false} />
               <Tooltip
+                cursor={{ fill: "#F3F4F6" }}
                 contentStyle={{
                   backgroundColor: "white",
                   border: "1px solid #E5E7EB",
                   borderRadius: "8px",
                 }}
               />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
+              <Bar
+                dataKey="count"
+                fill="#3B82F6"
+                radius={[12, 12, 0, 0]}
+                rootTabIndex={-1}
+                isAnimationActive={!isLayoutResizing}
+                animationDuration={400}
+                animationEasing="ease-out"
+              />
+            </BarChart>
           </ResponsiveContainer>
         </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+        
         <Panel title="Course Distribution">
           <ResponsiveContainer width="100%" height={320} debounce={75}>
             <PieChart>
@@ -1048,6 +1021,35 @@ export default function AdminDashboard() {
                 animationEasing="ease-out"
               >
                 {data.pieData.map((entry, index) => (
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend verticalAlign="bottom" height={36} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Panel>
+        <Panel title="Student Progress Distribution">
+          <ResponsiveContainer width="100%" height={320} debounce={75}>
+            <PieChart>
+              <Pie
+                data={data.progressBands}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={70}
+                outerRadius={110}
+                rootTabIndex={-1}
+                isAnimationActive={!isLayoutResizing}
+                animationDuration={400}
+                animationEasing="ease-out"
+              >
+                {data.progressBands.map((entry, index) => (
                   <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
